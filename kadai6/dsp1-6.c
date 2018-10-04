@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 //RIFFチャンク、WAVEフォームタイプ構造体
 typedef struct{
     char id[4];             //"RIFF"
@@ -30,10 +31,19 @@ void main(){
         printf("cannot open %s",fname);
         exit(1);
     }
+
+    strcpy(riff.id,"aaaa");
+    strcpy(riff.form,"form");
+    strcpy(fmt.id,"idid");
+    
+    
+    
+    
     fseek(fp,0,SEEK_SET);   //ストリームをファイルの先頭に持ってくる
     fread(&riff.id,sizeof(riff.id[0]),sizeof(riff.id),fp);
     fread(&riff.size,sizeof(riff.size),1,fp);
     fread(&riff.form,sizeof(riff.form[0]),sizeof(riff.form),fp);
+    
     fread(&fmt.id,sizeof(fmt.id[0]),sizeof(fmt.id),fp);
     fread(&fmt.size,sizeof(fmt.size),1,fp);
     fread(&fmt.format_id,sizeof(fmt.format_id),1,fp);
@@ -42,7 +52,11 @@ void main(){
     fread(&fmt.byte_sec,sizeof(fmt.byte_sec),1,fp);
     fread(&fmt.byte_samp,sizeof(fmt.byte_samp),1,fp);
     fread(&fmt.bit,sizeof(fmt.bit),1,fp);
+    puts(riff.id);
+    puts(riff.form);
+    puts(fmt.id); 
     printf("filesize : %d\n",(int)riff.size);
+    
     printf("channel : %d\n",(int)fmt.channel);
     printf("fs : %d\n",(int)fmt.fs);
     printf("bit : %d\n",(int)fmt.bit);
