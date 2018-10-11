@@ -3,8 +3,10 @@
 #include <string.h>
 
 FILE *readFP(char fileName[]);
+FILE *writeFP(char fileName[]);
 void readChunkRIFF(FILE *fp);
 void readChunkFMT(FILE *fp);
+void readDatas(FILE *fpIN,FILE *fpOUT);
 void printChunkRIFF(void);
 void printChunkFMT(void);
 void printForDrill(void);
@@ -32,18 +34,17 @@ riff_chunk riff;
 fmt_chunk fmt;
 unsigned long dataSize;     //データサイズ
 
+
+/************* main *************/
 void main(){
     FILE *fpIN,*fpOUT;
     fpIN = readFP("ara11.wav");
     fpOUT = writeFP("ara11.txt");
-    fseek(fpIN,40,SEEK_SET);
-
+    readDatas(fpIN,fpOUT);
     readChunkRIFF(fpIN);
     readChunkFMT(fpIN);
-    
     printForDrill();
 }
-
 
 /************* Functions *************/
 FILE *readFP(char fileName[]){
@@ -85,6 +86,18 @@ void readChunkFMT(FILE *fp){
     fread(&fmt.bit,2,1,fp);
 }
 
+void readDatas(FILE *fpIN,FILE *fpOUT){
+    int i;
+    short tmp;
+    fseek(fpIN,40,SEEK_SET);
+    fread(&dataSize,4,1,fpIN);
+    dataSize = dataSize/2;
+    for(i=0;i<(int)dataSize;i++){
+        fread(&tmp,2,1,fpIN);
+        fprintf(fpOUT,"%d\n",tmp);
+    }
+}
+
 void printChunkRIFF(){
     char id[5],form[5];
     sprintf(id,"%s",riff.id);
@@ -114,5 +127,6 @@ void printForDrill(){
     printf("チャンネル数：%d\n",(int)fmt.channel);
     printf("サンプリング周波数：%d[Hz]\n",(int)fmt.fs);
     printf("量子化ビット数：%d[bit]\n",(int)fmt.bit);
-    
+    printf("データ数：%d[sample]\n",(int)dataSize);
+    printf("録音時間：%lf[s]\n",(double)(1.0/fmt.fs)*dataSize);  
 }
