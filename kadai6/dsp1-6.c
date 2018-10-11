@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+FILE *readFP(char fileName[]);
+void readChunkRIFF(FILE *fp);
+void readChunkFMT(FILE *fp);
 void printChunkRIFF(void);
 void printChunkFMT(void);
+void printForDrill(void);
 
 //RIFFチャンク、WAVEフォームタイプ構造体
 typedef struct{
@@ -26,20 +30,51 @@ typedef struct{
 
 riff_chunk riff;
 fmt_chunk fmt;
+unsigned long dataSize;     //データサイズ
 
 void main(){
+    FILE *fpIN,*fpOUT;
+    fpIN = readFP("ara11.wav");
+    fpOUT = writeFP("ara11.txt");
+    fseek(fpIN,40,SEEK_SET);
+
+    readChunkRIFF(fpIN);
+    readChunkFMT(fpIN);
+    
+    printForDrill();
+}
+
+
+/************* Functions *************/
+FILE *readFP(char fileName[]){
     FILE *fp;
-    char fname[]="ara11.wav";
-    fp = fopen(fname,"r");
+    fp = fopen(fileName,"r");
     if(fp==NULL){
-        printf("cannot open %s",fname);
+        printf("Error : Cannot Read File\n");
         exit(1);
     }
+    return fp;
+}
 
+FILE *writeFP(char fileName[]){
+    FILE *fp;
+    fp = fopen(fileName,"w");
+    if(fp==NULL){
+        printf("Error : Cannot Write File\n");
+        exit(1);
+    }
+    return fp;
+}
+
+void readChunkRIFF(FILE *fp){
     fseek(fp,0,SEEK_SET);   //ストリームをファイルの先頭に持ってくる
     fread(&riff.id,1,4,fp);
     fread(&riff.size,4,1,fp);
     fread(&riff.form,1,4,fp);
+}
+
+void readChunkFMT(FILE *fp){
+    fseek(fp,12,SEEK_SET);  //ストリームをfmtチャンクの先頭に持ってくる
     fread(&fmt.id,1,4,fp);
     fread(&fmt.size,4,1,fp);
     fread(&fmt.format_id,2,1,fp);
@@ -48,15 +83,6 @@ void main(){
     fread(&fmt.byte_sec,4,1,fp);
     fread(&fmt.byte_samp,2,1,fp);
     fread(&fmt.bit,2,1,fp);
-    
-    /*
-    printf("filesize : %d\n",(int)riff.size);
-    printf("channel : %d\n",(int)fmt.channel);
-    printf("fs : %d\n",(int)fmt.fs);
-    printf("bit : %d\n",(int)fmt.bit);
-    */
-    printChunkRIFF();
-    printChunkFMT();
 }
 
 void printChunkRIFF(){
@@ -80,4 +106,13 @@ void printChunkFMT(){
     printf("byte/sec:%d\n",(int)fmt.byte_sec);
     printf("byte/ele:%d\n",(int)fmt.byte_samp);
     printf("bit:%d\n",(int)fmt.bit);
+}
+
+void printForDrill(){
+    printf("読み取り結果\n");
+    printf("ファイルサイズ(-8バイト)：%d\n",(int)riff.size);
+    printf("チャンネル数：%d\n",(int)fmt.channel);
+    printf("サンプリング周波数：%d[Hz]\n",(int)fmt.fs);
+    printf("量子化ビット数：%d[bit]\n",(int)fmt.bit);
+    
 }
