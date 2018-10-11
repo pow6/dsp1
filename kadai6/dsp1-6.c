@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+void printChunkRIFF(void);
+void printChunkFMT(void);
+
 //RIFFチャンク、WAVEフォームタイプ構造体
 typedef struct{
     char id[4];             //"RIFF"
@@ -32,35 +36,48 @@ void main(){
         exit(1);
     }
 
-    strcpy(riff.id,"aaaa");
-    strcpy(riff.form,"form");
-    strcpy(fmt.id,"idid");
-    
-    
-    
-    
     fseek(fp,0,SEEK_SET);   //ストリームをファイルの先頭に持ってくる
-    fread(&riff.id,sizeof(riff.id[0]),sizeof(riff.id),fp);
-    fread(&riff.size,sizeof(riff.size),1,fp);
-    fread(&riff.form,sizeof(riff.form[0]),sizeof(riff.form),fp);
+    fread(&riff.id,1,4,fp);
+    fread(&riff.size,4,1,fp);
+    fread(&riff.form,1,4,fp);
+    fread(&fmt.id,1,4,fp);
+    fread(&fmt.size,4,1,fp);
+    fread(&fmt.format_id,2,1,fp);
+    fread(&fmt.channel,2,1,fp);
+    fread(&fmt.fs,4,1,fp);
+    fread(&fmt.byte_sec,4,1,fp);
+    fread(&fmt.byte_samp,2,1,fp);
+    fread(&fmt.bit,2,1,fp);
     
-    fread(&fmt.id,sizeof(fmt.id[0]),sizeof(fmt.id),fp);
-    fread(&fmt.size,sizeof(fmt.size),1,fp);
-    fread(&fmt.format_id,sizeof(fmt.format_id),1,fp);
-    fread(&fmt.channel,sizeof(fmt.channel),1,fp);
-    fread(&fmt.fs,sizeof(fmt.fs),1,fp);
-    fread(&fmt.byte_sec,sizeof(fmt.byte_sec),1,fp);
-    fread(&fmt.byte_samp,sizeof(fmt.byte_samp),1,fp);
-    fread(&fmt.bit,sizeof(fmt.bit),1,fp);
-    puts(riff.id);
-    puts(riff.form);
-    puts(fmt.id); 
+    /*
     printf("filesize : %d\n",(int)riff.size);
-    
     printf("channel : %d\n",(int)fmt.channel);
     printf("fs : %d\n",(int)fmt.fs);
     printf("bit : %d\n",(int)fmt.bit);
-
-    
+    */
+    printChunkRIFF();
+    printChunkFMT();
 }
 
+void printChunkRIFF(){
+    char id[5],form[5];
+    sprintf(id,"%s",riff.id);
+    sprintf(form,"%s",riff.form);
+    printf("----- RIFF -----\n");
+    printf("ID:%s\n", riff.id);
+    printf("FileSize:%d\n",(int)riff.size);
+    printf("form:%s\n",riff.form);
+}
+void printChunkFMT(){
+    char id[5];
+    sprintf(id,"%s",fmt.id);
+    printf("----- FMT -----\n");
+    printf("ID:%s\n",fmt.id);
+    printf("FMTSize:%d\n",(int)fmt.size);
+    printf("formatID:%d\n",(int)fmt.format_id);
+    printf("channel:%d\n",(int)fmt.channel);
+    printf("SamplingHz:%d\n",(int)fmt.fs);
+    printf("byte/sec:%d\n",(int)fmt.byte_sec);
+    printf("byte/ele:%d\n",(int)fmt.byte_samp);
+    printf("bit:%d\n",(int)fmt.bit);
+}
