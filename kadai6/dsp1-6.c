@@ -44,8 +44,9 @@ void main(){
     readDatas(fpIN,fpOUT);
     readChunkRIFF(fpIN);
     readChunkFMT(fpIN);
-    fpIN = readFP("data11025.txt");
-    fpOUT = writeFP("out.wav");
+//    fpIN = readFP("data11025.txt");
+    fpIN = readFP("aa.txt");
+    fpOUT = writeFP("outA.wav");
     printForDrill();
     textToWave(fpIN,fpOUT);
 }
@@ -79,6 +80,13 @@ void readChunkRIFF(FILE *fp){
     fread(&riff.form,1,4,fp);
 }
 
+void writeChunkRIFF(FILE *fp,riff_chunk writeRIFF){
+    fseek(fp,0,SEEK_SET);   //ストリームをファイルの先頭に持ってくる
+    fwrite(&writeRIFF.id,1,4,fp);
+    fwrite(&writeRIFF.size,4,1,fp);
+    fwrite(&writeRIFF.form,1,4,fp);
+}
+
 void readChunkFMT(FILE *fp){
     fseek(fp,12,SEEK_SET);  //ストリームをfmtチャンクの先頭に持ってくる
     fread(&fmt.id,1,4,fp);
@@ -91,6 +99,18 @@ void readChunkFMT(FILE *fp){
     fread(&fmt.bit,2,1,fp);
 }
 
+void writeChunkFMT(FILE *fp,fmt_chunk writeFMT){
+    fseek(fp,12,SEEK_SET);  //ストリームをfmtチャンクの先頭に持ってくる
+    fwrite(&writeFMT.id,1,4,fp);
+    fwrite(&writeFMT.size,4,1,fp);
+    fwrite(&writeFMT.format_id,2,1,fp);
+    fwrite(&writeFMT.channel,2,1,fp);
+    fwrite(&writeFMT.fs,4,1,fp);
+    fwrite(&writeFMT.byte_sec,4,1,fp);
+    fwrite(&writeFMT.byte_samp,2,1,fp);
+    fwrite(&writeFMT.bit,2,1,fp);
+}
+
 void readDatas(FILE *fpIN,FILE *fpOUT){
     unsigned long i;
     short tmp;
@@ -99,49 +119,60 @@ void readDatas(FILE *fpIN,FILE *fpOUT){
     fread(&dataSize,4,1,fpIN);
     dataSize = dataSize/2;
     for(i=0;i<dataSize;i++){
-        fread(&tmp,2,1,fpIN);
-        fprintf(fpOUT,"%d\n",tmp);
+        fread(&tmp,sizeof(short),1,fpIN);
+        fprintf(fpOUT,"%hd\n",tmp);
     }
+
+/*   while(fread(&tmp,2,1,fpIN)>=1){
+       fprintf(fpOUT,"%d\n",tmp);
+   }
+*/
 }
 
 void textToWave(FILE *fpIN,FILE *fpOUT){
-    unsigned long num=0;
+    char d[4]="data";
+    int i;
+    unsigned long counter=0;
     short tmp;
     unsigned long fs=11025;
+    riff_chunk writeRIFF={
+        "RIFF",
+        0,
+        "WAVE"
+    };
+    fmt_chunk writeFMT={
+        "fmt ",
+        16,
+        1,
+        1,
+        0,
+        0,
+        2,
+        16,
+    };
     fseek(fpIN,0,SEEK_SET);     //読み取るtextデータ用
     fseek(fpOUT,44,SEEK_SET);   //waveに書き込むデータ用
-    while(fread(&tmp,2,1,fpIN)){
-        fprintf(fpOUT,"%u",tmp);
-        num++;
+//    fscanf(fpIN,"%d",&tmp);
+printf("うわぁぁ%d\n",writeRIFF.size);
+    while(fscanf(fpIN,"%hd",&tmp)!=EOF){
+        writeRIFF.size++;
+        fwrite(&tmp,sizeof(short),1,fpOUT);
+//printf("%d[%d]\n",writeRIFF.size,tmp);
     }
-    num = num/2;
-    fseek(fpOUT,0,SEEK_SET);
-    fprintf(fpOUT,"%s","RIFF");
-/*
-    fprintf(fpOUT,"%lu",(num*2)+36);
-    fprintf(fpOUT,"WAVEfmt ");
-    fprintf(fpOUT,"%lu",16);    //16ビット
-    fprintf(fpOUT,"%u",1);      //フォーマットID
-    fprintf(fpOUT,"%u",1);      //チャンネル数
-    fprintf(fpOUT,"%lu",fs);    //サンプリング周波数
-    fprintf(fpOUT,"%lu",fs*2);  //平均データ速度
-    fprintf(fpOUT,"%u",2);      //ブロックサイズ
-    fprintf(fpOUT,"%u",16);     //量子化ビット数
-    fprintf(fpOUT,"data");
-    fprintf(fpOUT,"%lu",num);
-*/
-    fwrite();
-    fprintf(fpOUT,(num*2)+36);
-    fprintf(fpOUT,"WAVEfmt ");
-    fprintf(fpOUT,16);    //16ビット
-    fprintf(fpOUT,1);      //フォーマットID
-    fprintf(fpOUT,1);      //チャンネル数
-    fprintf(fpOUT,fs);    //サンプリング周波数
-    fprintf(fpOUT,fs*2);  //平均データ速度
-    fprintf(fpOUT,2);      //ブロックサイズ
-    fprintf(fpOUT,16);     //量子化ビット数
-    fprintf(fpOUT,"data");
-    fprintf(fpOUT,num);
+printf("うわぁぁ%d\n",tmp);
+printf("うわぁぁ%d\n",writeRIFF.size);
+    counter=writeRIFF.size;
+    counter=counter*2;
+    writeRIFF.size=counter+36;
+printf("うわぁぁ%d\n",fs);
+printf("うわぁぁ%d\n",writeRIFF.size);
+    writeFMT.fs=fs;
+    writeFMT.byte_sec=fs*2;
+    writeChunkRIFF(fpOUT,writeRIFF);
+    writeChunkFMT(fpOUT,writeFMT);
+    fseek(fpOUT,36,SEEK_SET);
+    fwrite(d,4,1,fpOUT);
+    fwrite(&counter,4,1,fpOUT);
 }
 
 
