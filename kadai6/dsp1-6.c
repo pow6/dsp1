@@ -4,58 +4,69 @@
 
 FILE *readFP(char fileName[]);
 FILE *writeFP(char fileName[]);
+FILE *readBinaryFP(char fileName[]);
+FILE *writeBinaryFP(char fileName[]);
 void readChunkRIFF(FILE *fp);
 void readChunkFMT(FILE *fp);
-void readDatas(FILE *fpIN,FILE *fpOUT);
-void textToWave(FILE *fpIN,FILE *fpOUT);
+void readDatas(FILE *fpIN,FILE *fpOUT,double *pcm_data);
+void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data);
 void printChunkRIFF(void);
 void printChunkFMT(void);
 void printForDrill(void);
 
-//RIFFãƒãƒ£ãƒ³ã‚¯ã€WAVEãƒ•ã‚©ãƒ¼ãƒ ã‚¿ã‚¤ãƒ—æ§‹é€ ä½“
+//RIFFƒ`ƒƒƒ“ƒNAWAVEƒtƒH[ƒ€ƒ^ƒCƒv\‘¢‘Ì
 typedef struct{
     char id[4];             //"RIFF"
-    unsigned long size;     //ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º-8ãƒã‚¤ãƒˆ
+    unsigned long size;     //ƒtƒ@ƒCƒ‹ƒTƒCƒY-8ƒoƒCƒg
     char form[4];           //"WAVE"
 }riff_chunk;
 
-//fmtãƒãƒ£ãƒ³ã‚¯æ§‹é€ ä½“
+//fmtƒ`ƒƒƒ“ƒN\‘¢‘Ì
 typedef struct{
-    char id[4];                 //"fmt "ã‚¹ãƒšãƒ¼ã‚¹å«ã‚ã¦4æ–‡å­—
-    unsigned long size;         //fmté ˜åŸŸã®ã‚µã‚¤ã‚º
-    unsigned short format_id;   //ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆID(PCM:1)
-    unsigned short channel;     //ãƒãƒ£ãƒ³ãƒãƒ«æ•°ï¼ˆãƒ¢ãƒãƒ©ãƒ«:1 ã‚¹ãƒ†ãƒ¬ã‚ª:2ï¼‰
-    unsigned long fs;           //ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°
-    unsigned long byte_sec;     //1ç§’ã‚ãŸã‚Šã®ãƒã‚¤ãƒˆæ•°ï¼ˆfs * byte_sampï¼‰/å¹³å‡ãƒ‡ãƒ¼ã‚¿é€Ÿåº¦
-    unsigned short byte_samp;   //1è¦ç´ ã‚ãŸã‚Šã®ãƒã‚¤ãƒˆæ•°ï¼ˆchannel * (bit/8)ï¼‰
-    unsigned short bit;         //é‡å­åŒ–ãƒ“ãƒƒãƒˆæ•°(8 or 16)
+    char id[4];                 //"fmt "ƒXƒy[ƒXŠÜ‚ß‚Ä4•¶š
+    unsigned long size;         //fmt—Ìˆæ‚ÌƒTƒCƒY
+    unsigned short format_id;   //ƒtƒH[ƒ}ƒbƒgID(PCM:1)
+    unsigned short channel;     //ƒ`ƒƒƒ“ƒlƒ‹”iƒ‚ƒmƒ‰ƒ‹:1 ƒXƒeƒŒƒI:2j
+    unsigned long fs;           //ƒTƒ“ƒvƒŠƒ“ƒOü”g”
+    unsigned long byte_sec;     //1•b‚ ‚½‚è‚ÌƒoƒCƒg”ifs * byte_sampj/•½‹Ïƒf[ƒ^‘¬“x
+    unsigned short byte_samp;   //1—v‘f‚ ‚½‚è‚ÌƒoƒCƒg”ichannel * (bit/8)j
+    unsigned short bit;         //—Êq‰»ƒrƒbƒg”(8 or 16)
 }fmt_chunk;
 
-//dataãƒãƒ£ãƒ³ã‚¯æ§‹é€ ä½“
+//dataƒ`ƒƒƒ“ƒN\‘¢‘Ì
 typedef struct{
     char id[4];
     unsigned long size;
 }data_chunk;
 
+//factƒ`ƒƒƒ“ƒN\‘¢‘Ì
+typedef struct{
+	char id[4];			// "fact"
+	unsigned long size;		// factƒf[ƒ^—Ìˆæ‚ÌƒTƒCƒY (4)
+	unsigned long sample;		// ‘Sƒf[ƒ^”
+} fact_chunk;
+
 riff_chunk riff;
 fmt_chunk fmt;
+fact_chunk fact;
 data_chunk data;
-unsigned long dataSize;     //ãƒ‡ãƒ¼ã‚¿ã‚µã‚¤ã‚º
-
 
 /************* main *************/
 void main(){
-    FILE *fpIN,*fpOUT;
-    fpIN = readFP("ara11.wav");
-    fpOUT = writeFP("ara11.txt");
-    readChunkRIFF(fpIN);
-    readChunkFMT(fpIN);
-    readDatas(fpIN,fpOUT);
-//    fpIN = readFP("data11025.txt");
-    fpIN = readFP("aa.txt");
-    fpOUT = writeFP("outA.wav");
+    FILE *r,*rb,*w,*wb;
+    double *pcm_data=NULL;
+    rb = readBinaryFP("ara.wav");
+    w = writeFP("ara.txt");
+    readDatas(rb,w,pcm_data);
+    fclose(rb);
+    fclose(w);
+    r = readFP("ara.txt");
+    wb = writeBinaryFP("araOUT.wav");
     printForDrill();
-    textToWave(fpIN,fpOUT);
+    textToWave(r,wb,pcm_data);
+    fclose(r);
+    fclose(wb);
+    printForDrill();
 }
 /********************************/
 
@@ -79,106 +90,67 @@ FILE *writeFP(char fileName[]){
     }
     return fp;
 }
-
-void readChunkRIFF(FILE *fp){
-    fseek(fp,0,SEEK_SET);   //ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã®å…ˆé ­ã«æŒã£ã¦ãã‚‹
-    fread(&riff.id,1,4,fp);
-    fread(&riff.size,4,1,fp);
-    fread(&riff.form,1,4,fp);
+FILE *readBinaryFP(char fileName[]){
+    FILE *fp;
+    fp = fopen(fileName,"rb");
+    if(fp==NULL){
+        printf("Error : Cannot Read File[%s]\n",fileName);
+        exit(1);
+    }
+    return fp;
 }
 
-void writeChunkRIFF(FILE *fp,riff_chunk writeRIFF){
-    fseek(fp,0,SEEK_SET);   //ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã®å…ˆé ­ã«æŒã£ã¦ãã‚‹
-    fwrite(&writeRIFF.id,1,4,fp);
-    fwrite(&writeRIFF.size,4,1,fp);
-    fwrite(&writeRIFF.form,1,4,fp);
+FILE *writeBinaryFP(char fileName[]){
+    FILE *fp;
+    fp = fopen(fileName,"wb");
+    if(fp==NULL){
+        printf("Error : Cannot Write File[%s]\n",fileName);
+        exit(1);
+    }
+    return fp;
 }
 
-void readChunkFMT(FILE *fp){
-    fseek(fp,12,SEEK_SET);  //ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’fmtãƒãƒ£ãƒ³ã‚¯ã®å…ˆé ­ã«æŒã£ã¦ãã‚‹
-    fread(&fmt.id,1,4,fp);
-    fread(&fmt.size,4,1,fp);
-    fread(&fmt.format_id,2,1,fp);
-    fread(&fmt.channel,2,1,fp);
-    fread(&fmt.fs,4,1,fp);
-    fread(&fmt.byte_sec,4,1,fp);
-    fread(&fmt.byte_samp,2,1,fp);
-    fread(&fmt.bit,2,1,fp);
-}
-
-void writeChunkFMT(FILE *fp,fmt_chunk writeFMT){
-    fseek(fp,12,SEEK_SET);  //ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’fmtãƒãƒ£ãƒ³ã‚¯ã®å…ˆé ­ã«æŒã£ã¦ãã‚‹
-    fwrite(&writeFMT.id,1,4,fp);
-    fwrite(&writeFMT.size,4,1,fp);
-    fwrite(&writeFMT.format_id,2,1,fp);
-    fwrite(&writeFMT.channel,2,1,fp);
-    fwrite(&writeFMT.fs,4,1,fp);
-    fwrite(&writeFMT.byte_sec,4,1,fp);
-    fwrite(&writeFMT.byte_samp,2,1,fp);
-    fwrite(&writeFMT.bit,2,1,fp);
-}
-
-void readDatas(FILE *fpIN,FILE *fpOUT){
-    unsigned long i;
+//WAVE ‚©‚çƒf[ƒ^‚ğ“Ç‚İæ‚èCTEXT‚Éo—Í
+void readDatas(FILE *fpIN,FILE *fpOUT,double *pcm_data){
+    char buff[5];
     short short_data;
-    unsigned long size;
-    short *pcm_data=NULL;
-    fseek(fpIN,40,SEEK_SET);
-    fseek(fpOUT,0,SEEK_SET);
-    fread(&dataSize,4,1,fpIN);
-    dataSize = dataSize/(fmt.bit/8);
-    pcm_data=(short *)calloc(dataSize,sizeof(short));
-    for(i=0;i<dataSize;i++){
-        fread(&short_data,sizeof(short),1,fpIN);
-    //    fprintf(fpOUT,"%hd\n",tmp);
-        pcm_data[i]=short_data;
+    unsigned long i;
+	fseek(fpIN,0,SEEK_SET);			//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğƒtƒ@ƒCƒ‹‚Ìæ“ªƒoƒCƒg‚Ö
+	fread(&riff, sizeof(riff_chunk),1,fpIN);//RIFFƒ`ƒƒƒ“ƒNWAVEƒtƒH[ƒ€‚ğ“Ç‚İ‚Ş
+	fread(&fmt, sizeof(fmt_chunk),1,fpIN);	//fmtƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
+	fseek(fpIN,20+fmt.size,SEEK_SET);	//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğŸ‚Ìƒ`ƒƒƒ“ƒN‚Ìæ“ª‚Ö
+	fread(buff, sizeof(char),4,fpIN);	//ƒ`ƒƒƒ“ƒNID‚ğ“Ç‚İ‚İfact‚©data‚©ƒ`ƒFƒbƒN
+	fseek(fpIN,20+fmt.size,SEEK_SET);	//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğŸ‚Ìƒ`ƒƒƒ“ƒN‚Ìæ“ª‚ÖÄƒZƒbƒg
+	buff[4]='\0';
+	if(strcmp(buff,"fact")==0){				//ID‚ªfact‚È‚ç
+		fread(&fact, sizeof(fact_chunk),1,fpIN);	//fmtƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
+	}
+	fread(&data, sizeof(data_chunk),1,fpIN);//dataƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
+	fact.sample = data.size/(fmt.bit/8);	// ‘SƒTƒ“ƒvƒ‹”
+	pcm_data=(double *)calloc(fact.sample,sizeof(double));
+	for(i=0;i<fact.sample;i++){
+		fread(&short_data,sizeof(short),1,fpIN);
+		pcm_data[i]=short_data;
+	}
+	for(i=0;i<fact.sample;i++){
+        fprintf(fpOUT,"%f\n",pcm_data[i]);
     }
-    for(i=0;i<dataSize;i++){
-        fprintf(fpOUT,"%d\n",pcm_data[i]);
-    }
-/*   while(fread(&tmp,2,1,fpIN)>=1){
-       fprintf(fpOUT,"%d\n",tmp);
-   }
-*/
+    free(pcm_data);
+    pcm_data=NULL;
 }
 
-void textToWave(FILE *fpIN,FILE *fpOUT){
-/*
-    char d[4]="data";
-    int i;
-    unsigned long counter=0;
-    short tmp;
-    unsigned long fs=11025;
-    riff_chunk writeRIFF={
-        "RIFF",
-        0,
-        "WAVE"
-    };
-    fmt_chunk writeFMT={
-        "fmt ",
-        16,
-        1,
-        1,
-        0,
-        0,
-        2,
-        16,
-    };
-*/
+void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data){
     short short_data;
     char buff[256];
     unsigned long i;
-    unsigned long size;
-    short *pcm_data=NULL;
-    size=0;
-    while(fgets(buff,256,fpIN)!=NULL)size++;
-    printf("ãƒ•ã‚¡ã‚¤ãƒ«ã‚µãƒ³ãƒ—ãƒ«æ•°%ld\n",size);
-	if((pcm_data=(short *)calloc(size,sizeof(short)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+    fact.sample=0;
+    while(fgets(buff,256,fpIN)!=NULL)fact.sample++;
+	if((pcm_data=(double *)calloc(fact.sample,sizeof(double)))==NULL){
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     fseek(fpIN,0,SEEK_SET);
-    for(i=0;i<size;i++)fscanf(fpIN,"%hd",&pcm_data[i]);
+    for(i=0;i<fact.sample;i++)fscanf(fpIN,"%lf",&pcm_data[i]);
     strcpy(riff.id,"RIFF");
     strcpy(riff.form,"WAVE");
     strcpy(fmt.id,"fmt ");
@@ -190,40 +162,18 @@ void textToWave(FILE *fpIN,FILE *fpOUT){
     fmt.byte_sec=22050;
     fmt.byte_samp=2;
     fmt.bit=16;
-    data.size=size*fmt.byte_samp;
+    data.size=fact.sample*fmt.byte_samp;
     riff.size=44+data.size-8;
     fwrite(&riff,sizeof(riff_chunk),1,fpOUT);
     fwrite(&fmt,sizeof(fmt_chunk),1,fpOUT);
-    fwrite(&data,sizeof(data),1,fpOUT);
-    for(i=0;i<size;i++){
+    fwrite(&data,sizeof(data_chunk),1,fpOUT);
+    for(i=0;i<fact.sample;i++){
         short_data=(short)pcm_data[i];
         fwrite(&short_data,sizeof(short),1,fpOUT);
     }
-/*
-    fseek(fpIN,0,SEEK_SET);     //èª­ã¿å–ã‚‹textãƒ‡ãƒ¼ã‚¿ç”¨
-    fseek(fpOUT,44,SEEK_SET);   //waveã«æ›¸ãè¾¼ã‚€ãƒ‡ãƒ¼ã‚¿ç”¨
-//    fscanf(fpIN,"%d",&tmp);
-printf("ã†ã‚ãã%d\n",writeRIFF.size);
-    while(fscanf(fpIN,"%hd",&tmp)!=EOF){
-        writeRIFF.size++;
-        fwrite(&tmp,sizeof(short),1,fpOUT);
-//printf("%d[%d]\n",writeRIFF.size,tmp);
-    }
-printf("ã†ã‚ãã%d\n",tmp);
-printf("ã†ã‚ãã%d\n",writeRIFF.size);
-    counter=writeRIFF.size;
-    counter=counter*2;
-    writeRIFF.size=counter+36;
-printf("ã†ã‚ãã%d\n",fs);
-printf("ã†ã‚ãã%d\n",writeRIFF.size);
-    writeFMT.fs=fs;
-    writeFMT.byte_sec=fs*2;
-    writeChunkRIFF(fpOUT,writeRIFF);
-    writeChunkFMT(fpOUT,writeFMT);
-    fseek(fpOUT,36,SEEK_SET);
-    fwrite(d,4,1,fpOUT);
-    fwrite(&counter,4,1,fpOUT);
-*/
+    free(pcm_data);
+    pcm_data=NULL;
+
 }
 
 
@@ -255,11 +205,11 @@ void printChunkFMT(){
 }
 
 void printForDrill(){
-    printf("èª­ã¿å–ã‚Šçµæœ\n");
-    printf("ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º(-8ãƒã‚¤ãƒˆ)ï¼š%lu\n",riff.size);
-    printf("ãƒãƒ£ãƒ³ãƒãƒ«æ•°ï¼š%u\n",fmt.channel);
-    printf("ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°ï¼š%lu[Hz]\n",fmt.fs);
-    printf("é‡å­åŒ–ãƒ“ãƒƒãƒˆæ•°ï¼š%u[bit]\n",fmt.bit);
-    printf("ãƒ‡ãƒ¼ã‚¿æ•°ï¼š%lu[sample]\n",dataSize);
-    printf("éŒ²éŸ³æ™‚é–“ï¼š%lf[s]\n",(double)(1.0/fmt.fs)*dataSize);  
+    printf("“Ç‚İæ‚èŒ‹‰Ê\n");
+    printf("ƒtƒ@ƒCƒ‹ƒTƒCƒY(-8ƒoƒCƒg)F%lu\n",riff.size);
+    printf("ƒ`ƒƒƒ“ƒlƒ‹”F%u\n",fmt.channel);
+    printf("ƒTƒ“ƒvƒŠƒ“ƒOü”g”F%lu[Hz]\n",fmt.fs);
+    printf("—Êq‰»ƒrƒbƒg”F%u[bit]\n",fmt.bit);
+    printf("ƒf[ƒ^”F%lu[sample]\n",fact.sample);
+    printf("˜^‰¹ŠÔF%lf[s]\n",(double)(1.0/fmt.fs)*(double)fact.sample/fmt.fs);  
 }
