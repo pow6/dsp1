@@ -1,3 +1,4 @@
+//2018年 課題6 4J02 池口恭司
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,7 @@ void readChunkRIFF(FILE *fp);
 void readChunkFMT(FILE *fp);
 void readDatas(FILE *fpIN,FILE *fpOUT,double *pcm_data);
 void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data);
+void intro(void);
 void printChunkRIFF(void);
 void printChunkFMT(void);
 void printForDrill(void);
@@ -54,18 +56,33 @@ data_chunk data;
 /************* main *************/
 void main(){
     FILE *r,*rb,*w,*wb;
+    int mode;
+    char read[24],write[24];
     double *pcm_data=NULL;
-    rb = readBinaryFP("ara.wav");
-    w = writeFP("ara.txt");
-    readDatas(rb,w,pcm_data);
-    fclose(rb);
-    fclose(w);
-    r = readFP("ara.txt");
-    wb = writeBinaryFP("araOUT.wav");
-    printForDrill();
-    textToWave(r,wb,pcm_data);
-    fclose(r);
-    fclose(wb);
+    intro();
+    printf("モード選択：\n");
+    printf("wav to text:1 text to wav:2 ->");
+    scanf("%d",&mode);
+    printf("filename to read ->");
+    scanf("%s",read);
+    printf("filename to write ->");
+    scanf("%s",write);
+    if(mode==1){
+        rb = readBinaryFP(read);
+        w = writeFP(write);
+        readDatas(rb,w,pcm_data);
+        fclose(rb);
+        fclose(w);
+    }else if(mode==2){
+        r = readFP(read);
+        wb = writeBinaryFP(write);
+        textToWave(r,wb,pcm_data);
+        fclose(r);
+        fclose(wb);
+    }else{
+        printf("不正な入力値です\n");
+        exit(1);
+    }
     printForDrill();
 }
 /********************************/
@@ -178,6 +195,16 @@ void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data){
 
 
 /************* Display Functions *************/
+void intro(){
+    printf("2018年 課題5 4J02 池口恭司\n");
+    printf("使い方：\n");
+    printf("１．モード【wav to text/text to wav】を選択する\n");
+    printf("２．読み込むファイル名を入力する\n");
+    printf("３．出力するファイル名を入力する\n");
+    printf("４．読み取った（書き込んだ）wavデータの概要をコマンドライン上に出力し，後のデータはファイルに出力される\n");
+    printf("**************************\n");
+}
+
 void printChunkRIFF(){
     char id[5],form[5];
     sprintf(id,"%s",riff.id);
