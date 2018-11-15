@@ -7,9 +7,8 @@ struct complex{
     double re;
     double im;
 };
-void DFT(int N,int k,int a,int beta,struct complex *xn,struct complex *XK,int win);
 void intro(void);
-double Hwindow(double data,int n,int N);
+void FFT(struct complex *xn,struct complex *XK);
 struct complex calcSum(struct complex cm1,struct complex cm2);
 struct complex calcDif(struct complex cm1,struct complex cm2);
 struct complex calcPro(struct complex cm1,struct complex cm2);
@@ -19,6 +18,10 @@ struct complex calcCJG(struct complex cm);
 //struct complex transPlrToCts(struct complex cm);
 //struct complex transCtsToPlr(struct complex cm);
 void twid(struct complex *wnk,int N);
+void arrayReverse(struct complex *bitArray);
+void bitReverse_makeOrder(int eltValue, int *bitOrder); 
+int countBit(int value);
+
 
 int main()
 {
@@ -52,8 +55,6 @@ int main()
     }while(mode!=1&&mode!=2);
     printf("Amount of Data >>");
     scanf("%d",&N);
-    a=(mode==1)?1:(-1);   //for function data[DFT]
-    beta=(mode==1)?1:N; //for function data[DFT]
     xn=(struct complex*)malloc(sizeof(struct complex)*N);
     XK=(struct complex*)malloc(sizeof(struct complex)*N);
     for(i=0;i<N;i++){
@@ -62,64 +63,45 @@ int main()
         XK[i].re=0;
         XK[i].im=0;
     }
-    win=0;
-    if(mode==1){
-        //DFT
-        for(i=0;i<N;i++){       
-            fscanf(fpIn,"%lf",&xn[i].re);
-        }
-        printf("Hannig Window On:1 Off:Other>>");
-        scanf("%d",&win);
-        for(i=0;i<N;i++){
-            DFT(N,i,a,beta,xn,XK,win);
-        }
-        printf("Whitch Data to Print\n[Amp.&Phase Spectrum:1] [Data of DFT:2] [BOTH:Other Number]>>");
-        scanf("%d",&mode);
-        if(mode!=2){
-            for(i=0;i<N;i++){
-                //printf("振幅スペクトル|X%d|：%lf[dB]\n",i,sqrt(XK[i].re*XK[i].re+XK[i].im*XK[i].im));
-                //printf("振幅スペクトル：%lf[dB]\n",hypot(XK[i].re,XK[i].im));
-                //printf("位相スペクトルΘ%d：%lf[deg]\n",i,atan2(XK[i].im,XK[i].re));
-                printf("%lf[deg]\n",atan2(XK[i].im,XK[i].re));
-            }
-        }
-        if(mode!=1){
-            for(i=0;i<N;i++){
-                printf("X%d=%lf+(%lfj)\n",i,XK[i].re,XK[i].im);
-                fprintf(fpOUT,"%lf\n",sqrt(pow(xn[i].re,2)+pow(xn[i].im,2)));
-            }
-        }
-    }else{
-        //IDFT
-        for(i=0;i<N;i++){
-            fscanf(fpIn,"%lf,%lf",&xn[i].re,&xn[i].im);
-        }
-        for(i=0;i<N;i++){
-            DFT(N,i,a,beta,xn,XK,win);
-        }
-        for(i=0;i<N;i++){
-            printf("X%d=%lf+(%lfj)\n",i,XK[i].re,XK[i].im);
-        }
+    for(i=0;i<N;i++){       
+        fscanf(fpIn,"%lf",&xn[i].re);
     }
-    fclose(fpIn);
+    FFT(xn,XK);
+    for(i=0;i<N;i++){
+        printf("X%d=%lf+(%lfj)\n",i,xn[i].re,XK[i].im);
+    }
+   fclose(fpIn);
 }
 
-void DFT(int N,int k,int a,int beta,struct complex *xn,struct complex *XK,int win)
+
+//FFTを実行する
+void FFT(struct complex *xn,struct complex *XK)
 {
-    int n;
-    XK[k].re=0;
-    XK[k].im=0;
-    for(n=0;n<N;n++){
-        XK[k].re+=xn[n].re*cos(2*PI*n*k/N)+a*xn[n].im*sin(2*PI*n*k/N);
-        XK[k].im+=xn[n].im*cos(2*PI*n*k/N)-a*xn[n].re*sin(2*PI*n*k/N);
-        if(win==1){
-            XK[k].re=Hwindow(XK[k].re,n,N);
-            XK[k].im=Hwindow(XK[k].im,n,N);
+    int i,j,z;
+    int numOfArray=sizeof(xn)/sizeof(struct complex);
+    int shift,now,next;                        //計算時バタフライでずらす量
+    int numOfBit=countBit(numOfArray);  //段数（2^rのr段）
+    int numOfCalc=numOfArray/2;         //一段あたりのバタフライ演算数
+    struct complex *wnk;                //回転子のポインタ
+    twid(wnk,numOfArray);               //回転子の作成
+printf("array=%d\n",numOfArray);
+    arrayReverse(xn);                   //この時点でxnはビット逆順に並ぶ
+    for(i=0,shift=1;i<numOfBit;i++){            //段数分の繰り返し処理
+        now=0;
+        for(j=0;j<numOfCalc;j++){       //1段あたりのバタフライ演算数分の繰り返し処理
+            for(z=0;z<shift;z++){
+            printf("i=%d  j=%d   z=%d",i,j,z);
+                XK[now+z]=calcSum(xn[j],calcPro(xn[j+shift],wnk[(((i*shift)%(numOfArray-1))*j)%(numOfCalc)]));      //上段計算
+                XK[now+shift+z]=calcSum(xn[j],calcPro(xn[j+shift],wnk[(((i*shift)%numOfArray-1)*j)%numOfCalc]));    //下段計算
+                //XK[now+shift+z]=calcSum(xn[j],xn[j+shift]*wnk[(((i*shift)%7)*j)%4]);    //下段計算
+            }
+            now=now+(i+1)*2;    
         }
+        shift=shift<<1;                 //1段進むごとにバタフライ演算でずらす量は２倍になる
     }
-    XK[k].re=XK[k].re/beta;
-    XK[k].im=XK[k].im/beta;
 }
+//IFFTを実行する(FFTをnで割る処理を追加する)
+
 
 void intro(void)
 {
@@ -128,81 +110,108 @@ void intro(void)
     printf("**************************\n");
 }
 
-double Hwindow(double data,int n,int N)
-{
-    return (0.54-0.46*cos(2*PI*n/N))*data;
-}
-
+//複素数の和の計算
 struct complex calcSum(struct complex cm1,struct complex cm2)
 {
-    complex result;
+    struct complex result;
     result.re=cm1.re+cm2.re;
     result.im=cm1.im+cm2.im;
     return result;
 }
 
+//複素数の差の計算
 struct complex calcDif(struct complex cm1,struct complex cm2)
 {
-    complex result;
+    struct complex result;
     result.re=cm1.re-cm2.re;
     result.im=cm1.im-cm2.im;
     return result;
 }
 
+//複素数の積の計算
 struct complex calcPro(struct complex cm1,struct complex cm2)
 {
-    complex result;
+    struct complex result;
     result.re=cm1.re*cm2.re-cm1.im*cm2.im;
     result.im=cm1.im*cm2.re+cm1.re*cm2.im;
     return result;
 }
 
+//複素数の商の計算
 struct complex calcQuo(struct complex cm1,struct complex cm2)
 {
-    complex result;
+    struct complex result;
     result.re=(cm1.re*cm2.re+cm1.im*cm2.im)/(cm2.re*cm2.re+cm2.im*cm2.im);
     result.im=(cm1.im*cm2.re-cm1.re*cm2.im)/(cm2.re*cm2.re+cm2.im*cm2.im);
     return result;
 }
 
+//共益複素数の作成
 struct complex calcCJG(struct complex cm)
 {
-    complex result;
+    struct complex result;
     result.re=cm.re;
     result.im=cm.im * (-1);
     return result;
 }
 
-void twid(struct complex *wnk,int N) //
+//回転行列の作成
+void twid(struct complex *wnk,int N)
 {
     int n;
+    wnk=(struct complex*)malloc(sizeof(struct complex)*N);
     for(n=0;n<N;n++){
-        wnk[n].re=cos(2*PI*n*k/N);
-        wnk[n].im=sin(2*PI*n*k/N);
+        wnk[n].re=cos(-2*PI*n/N);
+        wnk[n].im=sin(-2*PI*n/N);
     }
 }
 
-void bitReverse(int bitOrder[]) //ビットを逆順にする
+ //もとの行列をビット逆順に並び替える
+void arrayReverse(struct complex *bitArray)
 {
-    int eltValue=sizeof(bitOrder)/sizeof(int);
+    int eltValue=sizeof(bitArray)/sizeof(struct complex);
     int i,value;
-    for(value=0;eltValue>>value;value++);
+    int *bitOrder,tmp;
+    struct complex *tmpArray;
+    tmpArray=(struct complex*)malloc(sizeof(struct complex)*eltValue);
+    bitReverse_makeOrder(eltValue,bitOrder);
     for(i=0;i<eltValue;i++){
-        bitOrder[i]=bitReverse(bitOrder[i],value);
+        tmpArray[bitOrder[i]].re=bitArray[i].re;
+        tmpArray[bitOrder[i]].im=bitArray[i].im;
+    }
+    for(i=0;i<eltValue;i++){
+        bitArray[i].re=tmpArray[i].re;
+        bitArray[i].im=tmpArray[i].im;
     }
 }
 
-int bitReverse_forOne(int order,int value)
+//ビット逆順行列を作成する
+void bitReverse_makeOrder(int eltValue, int *bitOrder) 
 {
-    int *num,i;
-    num=(int *)malloc(sizeof(int)*value);
-    for(i=value-1;i>=0;i--){
-        if((order&1)==1){ //0ビット目が1だったとき
-            num[i]=1;
-        }else{
-            num[i]=0;
+    int i,j;
+    int numOfBit=countBit(eltValue);
+    bitOrder=(int *)malloc(sizeof(int)*eltValue);
+    for(j=0;i<eltValue;j++){
+        bitOrder[j]=j;
+        for(i=numOfBit-1;i>=0;i--){
+            if((eltValue&1)==1){ //0ビット目が1だったとき
+                bitOrder[i]=1;
+            }else{
+                bitOrder[i]=0;
+            }
+            eltValue=eltValue>>1;
         }
-        order=order>>1;
     }
-    return order;
+}
+
+//ビット数を返す
+int countBit(int value)
+{    
+    printf("%d\n",value);
+    int result=0;
+    do{
+        result++;
+        value=value/2;
+    }while(value!=0);
+    return result;
 }
