@@ -71,6 +71,7 @@ int main()
         FFT(xn,XK,N);
         for(i=0;i<N;i++){
             printf("X%d=%lf+(%lfj)\n",i,xn[i].re,XK[i].im);
+            fprintf("%d %lf %lf %lf %lf",i,xn[i].re,xn[i].im,)
         }
     }else{
         //IFFT
@@ -84,6 +85,7 @@ int main()
         }
     }
    fclose(fpIn);
+
 }
 
 
