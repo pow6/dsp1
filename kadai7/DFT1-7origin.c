@@ -9,7 +9,6 @@ struct complex{
 };
 void intro(void);
 void FFT(struct complex *xn,struct complex *XK,int N);
-void IFFT(struct complex *xn,struct complex *XK,int N);
 struct complex calcSum(struct complex cm1,struct complex cm2);
 struct complex calcDif(struct complex cm1,struct complex cm2);
 struct complex calcPro(struct complex cm1,struct complex cm2);
@@ -30,7 +29,8 @@ int main()
     struct complex *XK;
     double *data,*dftData;
     int mode,n,k,N;
-    int i,a;
+    int i,win;
+    int a,beta;
     FILE *fpIn,*fpOUT;
     char fileName[24];
     intro();
@@ -49,7 +49,7 @@ int main()
         exit(1);
     }
     do{
-        printf("Mode FFT:1 IFFT:2 >>");
+        printf("Mode DFT:1 IDFT:2 >>");
         scanf("%d",&mode);
         getchar();
     }while(mode!=1&&mode!=2);
@@ -63,25 +63,12 @@ int main()
         XK[i].re=0;
         XK[i].im=0;
     }
-    if(mode==1){
-        //FFT
-        for(i=0;i<N;i++){       
-            fscanf(fpIn,"%lf",&xn[i].re);
-        }
-        FFT(xn,XK,N);
-        for(i=0;i<N;i++){
-            printf("X%d=%lf+(%lfj)\n",i,xn[i].re,XK[i].im);
-        }
-    }else{
-        //IFFT
-        for(i=0;i<N;i++){       
-            fscanf(fpIn,"%lf",&xn[i].re);
-            fscanf(fpIn,"%lf",&xn[i].im);
-        }
-        IFFT(xn,XK,N);
-        for(i=0;i<N;i++){
-            printf("X%d=%lf+(%lfj)\n",i,xn[i].re,XK[i].im);
-        }
+    for(i=0;i<N;i++){       
+        fscanf(fpIn,"%lf",&xn[i].re);
+    }
+    FFT(xn,XK,N);
+    for(i=0;i<N;i++){
+        printf("X%d=%lf+(%lfj)\n",i,xn[i].re,XK[i].im);
     }
    fclose(fpIn);
 }
@@ -96,54 +83,25 @@ void FFT(struct complex *xn,struct complex *XK,int N)
     int shift,now,next;                        //計算時バタフライでずらす量
     int numOfBit=countBit(numOfArray);  //段数（2^rのr段）
     int numOfCalc=numOfArray/2;         //一段あたりのバタフライ演算数
-    struct complex *wnk,tmp;                //回転子のポインタ
-    wnk=(struct complex*)malloc(sizeof(struct complex)*N);
+    struct complex *wnk;                //回転子のポインタ
     twid(wnk,numOfArray);               //回転子の作成
-    now=numOfArray/2;
+printf("array=%d\n",numOfArray);
+    arrayReverse(xn,N);                   //この時点でxnはビット逆順に並ぶ
     for(i=0,shift=1;i<numOfBit;i++){            //段数分の繰り返し処理
-        for(j=0;j<shift;j++){       //1段あたりのバタフライ演算数分の繰り返し処理ここから
-            for(z=0;z<now;z++){       //ここまでで1段分
-                tmp=calcPro(xn[shift*2*z+j+shift],wnk[j*now]);
-                xn[shift*2*z+j+shift]=calcDif(xn[shift*2*z+j],tmp);      //上段計算
-                xn[shift*2*z+j]=calcSum(xn[shift*2*z+j],tmp);    //下段計算
+        now=0;
+        for(j=0;j<numOfCalc;j++){       //1段あたりのバタフライ演算数分の繰り返し処理
+            for(z=0;z<shift;z++){
+            printf("i=%d  j=%d   z=%d",i,j,z);
+                XK[now+z]=calcSum(xn[j],calcPro(xn[j+shift],wnk[(((i*shift)%(numOfArray-1))*j)%(numOfCalc)]));      //上段計算
+                XK[now+shift+z]=calcSum(xn[j],calcPro(xn[j+shift],wnk[(((i*shift)%numOfArray-1)*j)%numOfCalc]));    //下段計算
+                //XK[now+shift+z]=calcSum(xn[j],xn[j+shift]*wnk[(((i*shift)%7)*j)%4]);    //下段計算
             }
+            now=now+(i+1)*2;    
         }
-        now=now>>1;
         shift=shift<<1;                 //1段進むごとにバタフライ演算でずらす量は２倍になる
-    }
-    for(i=0;i<numOfArray;i++){
-        XK[i]=xn[i];
     }
 }
 //IFFTを実行する(FFTをnで割る処理を追加する)
-void IFFT(struct complex *xn,struct complex *XK,int N)
-{
-    int i,j,z;
-    int numOfArray=sizeof(xn)/sizeof(struct complex);
-    numOfArray=N;
-    int shift,now,next;                        //計算時バタフライでずらす量
-    int numOfBit=countBit(numOfArray);  //段数（2^rのr段）
-    int numOfCalc=numOfArray/2;         //一段あたりのバタフライ演算数
-    struct complex *wnk,tmp;                //回転子のポインタ
-    wnk=(struct complex*)malloc(sizeof(struct complex)*N);
-    twid(wnk,numOfArray);               //回転子の作成
-    now=numOfArray/2;
-    for(i=0,shift=1;i<numOfBit;i++){            //段数分の繰り返し処理
-        for(j=0;j<shift;j++){       //1段あたりのバタフライ演算数分の繰り返し処理ここから
-            for(z=0;z<now;z++){       //ここまでで1段分
-                tmp=calcPro(xn[shift*2*z+j+shift],wnk[j*now]);
-                xn[shift*2*z+j+shift]=calcDif(xn[shift*2*z+j],tmp);      //上段計算
-                xn[shift*2*z+j]=calcSum(xn[shift*2*z+j],tmp);    //下段計算
-            }
-        }
-        now=now>>1;
-        shift=shift<<1;                 //1段進むごとにバタフライ演算でずらす量は２倍になる
-    }
-    for(i=0;i<numOfArray;i++){
-        XK[i].re=xn[i].re/N;
-        XK[i].im=xn[i].im/N;
-    }
-}
 
 
 void intro(void)
@@ -202,6 +160,7 @@ struct complex calcCJG(struct complex cm)
 void twid(struct complex *wnk,int N)
 {
     int n;
+    wnk=(struct complex*)malloc(sizeof(struct complex)*N);
     for(n=0;n<N;n++){
         wnk[n].re=cos(-2*PI*n/N);
         wnk[n].im=sin(-2*PI*n/N);
@@ -214,44 +173,35 @@ void arrayReverse(struct complex *bitArray,int N)
     int eltValue=sizeof(bitArray)/sizeof(struct complex);
     eltValue=N;
     int i,value;
+    int *bitOrder,tmp;
     struct complex *tmpArray;
-    int *bitOrder;
     tmpArray=(struct complex*)malloc(sizeof(struct complex)*eltValue);
-    bitOrder=(int *)malloc(sizeof(int)*N);
-    for(i=0;i<N;i++){
-        bitOrder[i]=0;
-    }
     bitReverse_makeOrder(eltValue,bitOrder);
-for(i=0;i<N;i++){
-printf("bitOrder:%d bitArray:%d %d\n",bitOrder[i],bitArray[i].re,bitArray[i].im);
-}
     for(i=0;i<eltValue;i++){
-        tmpArray[bitOrder[i]]=bitArray[i];
+        tmpArray[bitOrder[i]].re=bitArray[i].re;
+        tmpArray[bitOrder[i]].im=bitArray[i].im;
     }
     for(i=0;i<eltValue;i++){
-        bitArray[i]=tmpArray[i];
+        bitArray[i].re=tmpArray[i].re;
+        bitArray[i].im=tmpArray[i].im;
     }
-for(i=0;i<N;i++){
-printf("order:%d bitArray:%d %d\n",i,bitArray[i].re,bitArray[i].im);
-}
-
 }
 
 //ビット逆順行列を作成する
 void bitReverse_makeOrder(int eltValue, int *bitOrder) 
 {
-    int i,j,tmp;
+    int i,j;
     int numOfBit=countBit(eltValue);
-    for(j=0;j<eltValue;j++){
-        tmp=j;
-        for(i=0;i<numOfBit;i++){
-            bitOrder[j]=bitOrder[j]<<1;
-            if((tmp&1)==1){ //0ビット目が1だったとき
-                bitOrder[j]+=1;
+    bitOrder=(int *)malloc(sizeof(int)*eltValue);
+    for(j=0;i<eltValue;j++){
+        bitOrder[j]=j;
+        for(i=numOfBit-1;i>=0;i--){
+            if((eltValue&1)==1){ //0ビット目が1だったとき
+                bitOrder[i]=1;
             }else{
-                bitOrder[j]+=0;
+                bitOrder[i]=0;
             }
-            tmp=tmp>>1;
+            eltValue=eltValue>>1;
         }
     }
 }
@@ -264,5 +214,6 @@ int countBit(int value)
         result++;
         value=value/2;
     }while(value!=0);
+    printf("%d\n",result-1);
     return result-1;
 }
