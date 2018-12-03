@@ -1,4 +1,4 @@
-//2018å¹´ èª²é¡Œ6 4J02 æ± å£æ­å¸
+//2018”N ‰Û‘è6 4J02 ’rŒû‹±i
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,44 +11,44 @@ void readChunkRIFF(FILE *fp);
 void readChunkFMT(FILE *fp);
 void readDataFromWave(FILE *fpIN,FILE *fpOUT,FILE *fpFL);
 void readDataFromText(FILE *fpIN,FILE *fpOUT,FILE *fpFL);
-void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data);
+void textToWave(FILE *fpIN,FILE *fpOUT);
 void intro(void);
 void printChunkRIFF(void);
 void printChunkFMT(void);
 void printForDrill(void);
-void filtering(double *rawData,double *h,int rawDataSize,int hFilterSize);
+void filtering(double *rawData,double *h,int rawDataSize,int hFilterSize,FILE *fpOUT);
 
 
-//RIFFãƒãƒ£ãƒ³ã‚¯ã€WAVEãƒ•ã‚©ãƒ¼ãƒ ã‚¿ã‚¤ãƒ—æ§‹é€ ä½“
+//RIFFƒ`ƒƒƒ“ƒNAWAVEƒtƒH[ƒ€ƒ^ƒCƒv\‘¢‘Ì
 typedef struct{
     char id[4];             //"RIFF"
-    unsigned long size;     //ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º-8ãƒã‚¤ãƒˆ
+    unsigned long size;     //ƒtƒ@ƒCƒ‹ƒTƒCƒY-8ƒoƒCƒg
     char form[4];           //"WAVE"
 }riff_chunk;
 
-//fmtãƒãƒ£ãƒ³ã‚¯æ§‹é€ ä½“
+//fmtƒ`ƒƒƒ“ƒN\‘¢‘Ì
 typedef struct{
-    char id[4];                 //"fmt "ã‚¹ãƒšãƒ¼ã‚¹å«ã‚ã¦4æ–‡å­—
-    unsigned long size;         //fmté ˜åŸŸã®ã‚µã‚¤ã‚º
-    unsigned short format_id;   //ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆID(PCM:1)
-    unsigned short channel;     //ãƒãƒ£ãƒ³ãƒãƒ«æ•°ï¼ˆãƒ¢ãƒãƒ©ãƒ«:1 ã‚¹ãƒ†ãƒ¬ã‚ª:2ï¼‰
-    unsigned long fs;           //ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°
-    unsigned long byte_sec;     //1ç§’ã‚ãŸã‚Šã®ãƒã‚¤ãƒˆæ•°ï¼ˆfs * byte_sampï¼‰/å¹³å‡ãƒ‡ãƒ¼ã‚¿é€Ÿåº¦
-    unsigned short byte_samp;   //1è¦ç´ ã‚ãŸã‚Šã®ãƒã‚¤ãƒˆæ•°ï¼ˆchannel * (bit/8)ï¼‰
-    unsigned short bit;         //é‡å­åŒ–ãƒ“ãƒƒãƒˆæ•°(8 or 16)
+    char id[4];                 //"fmt "ƒXƒy[ƒXŠÜ‚ß‚Ä4•¶š
+    unsigned long size;         //fmt—Ìˆæ‚ÌƒTƒCƒY
+    unsigned short format_id;   //ƒtƒH[ƒ}ƒbƒgID(PCM:1)
+    unsigned short channel;     //ƒ`ƒƒƒ“ƒlƒ‹”iƒ‚ƒmƒ‰ƒ‹:1 ƒXƒeƒŒƒI:2j
+    unsigned long fs;           //ƒTƒ“ƒvƒŠƒ“ƒOü”g”
+    unsigned long byte_sec;     //1•b‚ ‚½‚è‚ÌƒoƒCƒg”ifs * byte_sampj/•½‹Ïƒf[ƒ^‘¬“x
+    unsigned short byte_samp;   //1—v‘f‚ ‚½‚è‚ÌƒoƒCƒg”ichannel * (bit/8)j
+    unsigned short bit;         //—Êq‰»ƒrƒbƒg”(8 or 16)
 }fmt_chunk;
 
-//dataãƒãƒ£ãƒ³ã‚¯æ§‹é€ ä½“
+//dataƒ`ƒƒƒ“ƒN\‘¢‘Ì
 typedef struct{
     char id[4];
     unsigned long size;
 }data_chunk;
 
-//factãƒãƒ£ãƒ³ã‚¯æ§‹é€ ä½“
+//factƒ`ƒƒƒ“ƒN\‘¢‘Ì
 typedef struct{
 	char id[4];			// "fact"
-	unsigned long size;		// factãƒ‡ãƒ¼ã‚¿é ˜åŸŸã®ã‚µã‚¤ã‚º (4)
-	unsigned long sample;		// å…¨ãƒ‡ãƒ¼ã‚¿æ•°
+	unsigned long size;		// factƒf[ƒ^—Ìˆæ‚ÌƒTƒCƒY (4)
+	unsigned long sample;		// ‘Sƒf[ƒ^”
 } fact_chunk;
 
 riff_chunk riff;
@@ -59,29 +59,36 @@ data_chunk data;
 /************* main *************/
 void main(){
     FILE *rData,*rFilt,*w;
+    FILE *read,*write;
     int mode;
-    char fileName[24];
+    char fileName[24],fileNameTxt[24];
     intro();
-    printf("ãƒ¢ãƒ¼ãƒ‰é¸æŠ");
-    printf("èª­ã¿å–ã‚Šãƒ•ã‚¡ã‚¤ãƒ«å½¢å¼ï¼šwav->1 text->2\n");
+    printf("ƒ‚[ƒh‘I‘ğ");
+    printf("“Ç‚İæ‚èƒtƒ@ƒCƒ‹Œ`®Fwav->1 text->2\n");
     scanf("%d",&mode);
-    printf("ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°ãƒ•ã‚¡ã‚¤ãƒ«åï¼š");
+    printf("ƒtƒBƒ‹ƒ^ƒŠƒ“ƒOƒtƒ@ƒCƒ‹–¼.txtF");
     scanf("%s",fileName);
     rFilt=readFP(fileName);
-    printf("ãƒ‡ãƒ¼ã‚¿ãƒ•ã‚¡ã‚¤ãƒ«åï¼š");
+    printf("ƒf[ƒ^ƒtƒ@ƒCƒ‹–¼.Šg’£q(txt or wav)F");
     scanf("%s",fileName);
-    rData=readFP(fileName);
-    printf("å‡ºåŠ›ãƒ•ã‚¡ã‚¤ãƒ«åï¼š");
-    scanf("%s",fileName);
-    w=writeFP(fileName);
+    printf("o—Ítxtƒtƒ@ƒCƒ‹–¼.txtF");
+    scanf("%s",fileNameTxt);
+    w=writeFP(fileNameTxt);
     if(mode==1){
+        rData=readBinaryFP(fileName);
         readDataFromWave(rData,w,rFilt);
     }else if(mode==2){
+        rData=readFP(fileName);
         readDataFromText(rData,w,rFilt);
     }else{
-        printf("ãƒ¢ãƒ¼ãƒ‰é¸æŠãŒæ­£ã—ãã•ã‚Œã¦ã„ã¾ã›ã‚“\n");
+        printf("ƒ‚[ƒh‘I‘ğ‚ª³‚µ‚­‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ\n");
         exit(0);
     }
+    read=readFP(fileNameTxt);
+    printf("o—Íwavƒtƒ@ƒCƒ‹–¼.wavF");
+    scanf("%s",fileName);
+    write=writeBinaryFP(fileName);
+    textToWave(read,write);
 }
 /********************************/
 
@@ -137,46 +144,47 @@ void readDataFromWave(FILE *fpIN,FILE *fpOUT,FILE *fpFL)
     unsigned long i;
     int sizeOfRaw=0,sizeOfFil=0,j;
     int dataSize;
-//ç”Ÿãƒ‡ãƒ¼ã‚¿èª­ã¿å–ã‚Š
-	fseek(fpIN,0,SEEK_SET);			//ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ä½ç½®ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã®å…ˆé ­ãƒã‚¤ãƒˆã¸
-	fread(&riff, sizeof(riff_chunk),1,fpIN);//RIFFãƒãƒ£ãƒ³ã‚¯WAVEãƒ•ã‚©ãƒ¼ãƒ ã‚’èª­ã¿è¾¼ã‚€
-	fread(&fmt, sizeof(fmt_chunk),1,fpIN);	//fmtãƒãƒ£ãƒ³ã‚¯ã‚’èª­ã¿è¾¼ã‚€
-	fseek(fpIN,20+fmt.size,SEEK_SET);	//ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ä½ç½®ã‚’æ¬¡ã®ãƒãƒ£ãƒ³ã‚¯ã®å…ˆé ­ã¸
-	fread(buff, sizeof(char),4,fpIN);	//ãƒãƒ£ãƒ³ã‚¯IDã‚’èª­ã¿è¾¼ã¿factã‹dataã‹ãƒã‚§ãƒƒã‚¯
-	fseek(fpIN,20+fmt.size,SEEK_SET);	//ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ä½ç½®ã‚’æ¬¡ã®ãƒãƒ£ãƒ³ã‚¯ã®å…ˆé ­ã¸å†ã‚»ãƒƒãƒˆ
+//¶ƒf[ƒ^“Ç‚İæ‚è
+	fseek(fpIN,0,SEEK_SET);			//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğƒtƒ@ƒCƒ‹‚Ìæ“ªƒoƒCƒg‚Ö
+	fread(&riff, sizeof(riff_chunk),1,fpIN);//RIFFƒ`ƒƒƒ“ƒNWAVEƒtƒH[ƒ€‚ğ“Ç‚İ‚Ş
+	fread(&fmt, sizeof(fmt_chunk),1,fpIN);	//fmtƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
+	fseek(fpIN,20+fmt.size,SEEK_SET);	//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğŸ‚Ìƒ`ƒƒƒ“ƒN‚Ìæ“ª‚Ö
+	fread(buff, sizeof(char),4,fpIN);	//ƒ`ƒƒƒ“ƒNID‚ğ“Ç‚İ‚İfact‚©data‚©ƒ`ƒFƒbƒN
+	fseek(fpIN,20+fmt.size,SEEK_SET);	//ƒtƒ@ƒCƒ‹“Ç‚İ‚İˆÊ’u‚ğŸ‚Ìƒ`ƒƒƒ“ƒN‚Ìæ“ª‚ÖÄƒZƒbƒg
 	buff[4]='\0';
-	if(strcmp(buff,"fact")==0){				//IDãŒfactãªã‚‰
-		fread(&fact, sizeof(fact_chunk),1,fpIN);	//fmtãƒãƒ£ãƒ³ã‚¯ã‚’èª­ã¿è¾¼ã‚€
+	if(strcmp(buff,"fact")==0){				//ID‚ªfact‚È‚ç
+		fread(&fact, sizeof(fact_chunk),1,fpIN);	//fmtƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
 	}
-	fread(&data, sizeof(data_chunk),1,fpIN);//dataãƒãƒ£ãƒ³ã‚¯ã‚’èª­ã¿è¾¼ã‚€
-	fact.sample = data.size/(fmt.bit/8);	// å…¨ã‚µãƒ³ãƒ—ãƒ«æ•°
+	fread(&data, sizeof(data_chunk),1,fpIN);//dataƒ`ƒƒƒ“ƒN‚ğ“Ç‚İ‚Ş
+	fact.sample = data.size/(fmt.bit/8);	// ‘SƒTƒ“ƒvƒ‹”
 	rawData=(double *)calloc(fact.sample,sizeof(double));
 	for(i=0;i<fact.sample;i++){
 		fread(&short_data,sizeof(short),1,fpIN);
 		rawData[i]=short_data;
 	}
-    printf("èª­ã¿å–ã£ãŸãƒ‡ãƒ¼ã‚¿[%ld]\n",fact.sample);
-	for(i=0;i<fact.sample;i++){
+    printf("“Ç‚İæ‚Á‚½ƒf[ƒ^”[%ldŒÂ]\n",fact.sample);
+/*	for(i=0;i<fact.sample;i++){
         printf("%lf\n",rawData[i]);
     }
-    fclose(fpIN);
+*/    fclose(fpIN);
     sizeOfRaw=fact.sample;
-//ãƒ•ã‚£ãƒ«ã‚¿ãƒ‡ãƒ¼ã‚¿èª­ã¿å–ã‚Š
+//ƒtƒBƒ‹ƒ^ƒf[ƒ^“Ç‚İæ‚è
     while(fgets(buff,256,fpFL)!=NULL)sizeOfFil++;
 	if((h=(double *)calloc(sizeOfFil,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     fseek(fpFL,0,SEEK_SET);
-    printf("ãƒ‡ã‚¸ã‚¿ãƒ«ãƒ•ã‚£ãƒ«ã‚¿ã®ä¿‚æ•°ãƒ‡ãƒ¼ã‚¿[%då€‹]ï¼š",sizeOfFil);
+    printf("ƒfƒWƒ^ƒ‹ƒtƒBƒ‹ƒ^‚ÌŒW”ƒf[ƒ^[%dŒÂ]\n",sizeOfFil);
     for(j=0;j<sizeOfFil;j++){
         fscanf(fpFL,"%lf",&h[j]);
-        printf("%lf ",h[j]);
+//        printf("%lf ",h[j]);
     }
-    printf("\n");
+//    printf("\n");
     fclose(fpFL);
-//ãƒ‡ãƒ¼ã‚¿å‡¦ç†
-    filtering(rawData,h,sizeOfRaw,sizeOfFil);    
+//ƒf[ƒ^ˆ—
+    filtering(rawData,h,sizeOfRaw,sizeOfFil,fpOUT);   
+    fclose(fpOUT); 
 }
 
 void readDataFromText(FILE *fpIN,FILE *fpOUT,FILE *fpFL)
@@ -186,45 +194,45 @@ void readDataFromText(FILE *fpIN,FILE *fpOUT,FILE *fpFL)
     char buff[256];
     while(fgets(buff,256,fpIN)!=NULL)sizeOfRaw++;
 	if((rawData=(double *)calloc(sizeOfRaw,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     fseek(fpIN,0,SEEK_SET);
-    printf("èª­ã¿å–ã£ãŸãƒ‡ãƒ¼ã‚¿[%då€‹]\n",sizeOfRaw);
+    printf("“Ç‚İæ‚Á‚½ƒf[ƒ^[%dŒÂ]\n",sizeOfRaw);
     for(i=0;i<sizeOfRaw;i++){
         fscanf(fpIN,"%lf",&rawData[i]);
         printf("%lf\n",rawData[i]);
     }
     fclose(fpIN);
-//ãƒ•ã‚£ãƒ«ã‚¿ãƒ‡ãƒ¼ã‚¿èª­ã¿å–ã‚Š
+//ƒtƒBƒ‹ƒ^ƒf[ƒ^“Ç‚İæ‚è
     while(fgets(buff,256,fpFL)!=NULL)sizeOfFil++;
 	if((h=(double *)calloc(sizeOfFil,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     fseek(fpFL,0,SEEK_SET);
-    printf("ãƒ‡ã‚¸ã‚¿ãƒ«ãƒ•ã‚£ãƒ«ã‚¿ã®ä¿‚æ•°ãƒ‡ãƒ¼ã‚¿[%då€‹]ï¼š",sizeOfFil);
+    printf("ƒfƒWƒ^ƒ‹ƒtƒBƒ‹ƒ^‚ÌŒW”ƒf[ƒ^[%dŒÂ]F",sizeOfFil);
     for(j=0;j<sizeOfFil;j++){
         fscanf(fpFL,"%lf",&h[j]);
         printf("%lf ",h[j]);
     }
     printf("\n");
     fclose(fpFL);
-
-//ãƒ‡ãƒ¼ã‚¿å‡¦ç†
-    filtering(rawData,h,sizeOfRaw,sizeOfFil);    
-
+//ƒf[ƒ^ˆ—
+    filtering(rawData,h,sizeOfRaw,sizeOfFil,fpOUT);    
+    fclose(fpOUT);
 }
 
-void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data)
+void textToWave(FILE *fpIN,FILE *fpOUT)
 {
     short short_data;
     char buff[256];
     unsigned long i;
+    double *pcm_data;
     fact.sample=0;
     while(fgets(buff,256,fpIN)!=NULL)fact.sample++;
 	if((pcm_data=(double *)calloc(fact.sample,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     fseek(fpIN,0,SEEK_SET);
@@ -258,12 +266,12 @@ void textToWave(FILE *fpIN,FILE *fpOUT,double *pcm_data)
 /************* Display Functions *************/
 void intro()
 {
-    printf("2018å¹´ èª²é¡Œ8 4J02 æ± å£æ­å¸\n");
-    printf("ä½¿ã„æ–¹ï¼š\n");
-    printf("ï¼‘ï¼\n");
-    printf("ï¼’ï¼\n");
-    printf("ï¼“ï¼\n");
-    printf("ï¼”ï¼\n");
+    printf("2018”N ‰Û‘è8 4J02 ’rŒû‹±i\n");
+    printf("g‚¢•ûF\n");
+    printf("‚PD“Ç‚İæ‚éƒtƒ@ƒCƒ‹‚ÌŒ`®‚ğ‘I‘ğ‚·‚éytxt/wavz\n");
+    printf("‚QDƒtƒBƒ‹ƒ^ƒŠƒ“ƒOŒW”‚ğ•Û‘¶‚µ‚½ƒtƒ@ƒCƒ‹–¼Cƒf[ƒ^‚ğ•Û‘¶‚µ‚½ƒtƒ@ƒCƒ‹–¼‹y‚ÑCo—Í‚·‚éƒtƒ@ƒCƒ‹–¼‚ğ“ü—Í‚·‚é\n");
+    printf("¦ƒtƒBƒ‹ƒ^ƒŠƒ“ƒOŒW”‚ÍCƒtƒ@ƒCƒ‹‚©‚ç’¼Ú“Ç‚İæ‚é‚½‚ßC’x‰„‚âƒGƒR[‚È‚Ç‚Ìİ’è‚Í“Ç‚İæ‚éƒtƒ@ƒCƒ‹‚Ì•û‚Åİ’è‚ğs‚¤\n");
+    printf("¦–{ƒvƒƒOƒ‰ƒ€‚Å‚ÍCtxtƒtƒ@ƒCƒ‹o—ÍŒãCwavƒtƒ@ƒCƒ‹o—Í‚ğs‚¤\n");
     printf("**************************\n");
 }
 
@@ -297,34 +305,31 @@ void printChunkFMT()
 }
 
 /************* Kadai1-8 Additional Functions *************/
-void filtering(double *rawData,double *h,int rawDataSize,int hFilterSize)
+void filtering(double *rawData,double *h,int rawDataSize,int hFilterSize,FILE *fpOUT)
 {
     int i,j;
     double *result;
     double *inputData;
-
-    printf("rawDataSize[%d] hFilterSize[%d]\n",rawDataSize,hFilterSize);
-
-
-
+    //printf("rawDataSize[%dŒÂ] hFilterSize[%dŒÂ]\n",rawDataSize,hFilterSize);
     if((inputData=calloc(hFilterSize,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
     if((result=calloc(rawDataSize,sizeof(double)))==NULL){
-        printf("é…åˆ—ãŒç¢ºä¿ã§ãã¾ã›ã‚“ã§ã—ãŸ\n");
+        printf("”z—ñ‚ªŠm•Û‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½\n");
         exit(0);
     }
-    printf("ãƒ•ã‚£ãƒ«ã‚¿å¾Œã®ãƒ‡ãƒ¼ã‚¿[%d]",rawDataSize);
+    printf("ƒtƒBƒ‹ƒ^Œã‚Ìƒf[ƒ^[%dŒÂ]\n",rawDataSize);
     for(i=0;i<rawDataSize;i++){
         for(j=hFilterSize-1;j>0;j--){
             inputData[j]=inputData[j-1];
         }
-        inputData[0]=h[i];
+        inputData[0]=rawData[i];
         for(j=0;j<hFilterSize;j++){
             result[i]+=h[j]*inputData[j];
         }
-        printf("%lf\n",result[i]);
+//        printf("%lf\n",result[i]);
+        fprintf(fpOUT,"%lf\n",result[i]);
     }
 }
 
