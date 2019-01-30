@@ -3,9 +3,6 @@
 #include <time.h>
 #include <math.h>
 
-//#define fileRead(fileName,fileStream) printf("aaa");fileStream=fopen(fileName,"r");if(fileStream==NULL){printf("cannat read file[%s]",fileName);exit(1);}
-//#define fileWrite(fileName,fileStream) fileStream=fopen(fileName,"w");if(fileStream==NULL){printf("cannat write file[%s]",fileName);exit(1);}
-
 double gauss(void);	//白色ガウス性雑音発生関数
 double colored(void);	//有色信号発生関数(1次IIRフィルタ利用)
 void intro(void);
@@ -21,46 +18,48 @@ int main()
 	double d,y,e,xnorm;
 	int i,j,sample;
 
-    FILE *fp;
+    FILE *fpA,*fpB,*fpC;
     int dataSize,filtSize;
     double tmp,step;
-    printf("ファイル読み込み");
 
 	srand((unsigned)time(NULL));
 
     //intro();
 	//入力データが入ったファイルをオープン
-    fp = fopen("ara11_s.txt","r");
-    if(fp==NULL){
+    fpA = fopen("ara11_s.txt","r");
+    if(fpA == NULL){
         printf("ファイルオープンエラー\n");
         return -1;
     }
-    dataSize=0;
-    while(fscanf(fp,"%lf",&tmp) != EOF)dataSize++;
+
+    dataSize = 10000;
     rawxn = (double *)malloc(dataSize*sizeof(double));
-    fseek(fp,0L,SEEK_SET);
-    i=0;
-    while(fscanf(fp,"%lf",&rawxn[i]) != EOF)i++;
-    fclose(fp);
+    fseek(fpA,0L,SEEK_SET);
+    for(i=0;i<dataSize;i++){
+        fscanf(fpA,"%lf",&rawxn[i]);
+    }
+    fclose(fpA);
 
 	//インパルス応答をファイルから読み込む．数もカウントnとする
-    fp = fopen("w_imp50.txt","r");
-    if(fp==NULL){
+    fpB = fopen("w_imp50.txt","r");
+    if(fpB==NULL){
         printf("ファイルオープンエラー\n");
         return -1;
     }
-    fseek(fp,0L,SEEK_SET);
-    filtSize=0;
-    while(fscanf(fp,"%lf",&tmp) != EOF)filtSize++;
+
+    filtSize=50;
     wn = (double *)malloc(filtSize*sizeof(double));
-    fseek(fp,0L,SEEK_SET);
-    i=0;
-    while(fscanf(fp,"%lf",&wn[i]) != EOF)i++;
-    fclose(fp);
+    fseek(fpB,0L,SEEK_SET);
+    for(i=0;i<filtSize;i++){
+       fscanf(fpB,"%lf\n",&wn[i]);
+        printf("filtSize : %d  ---- %lf\n",i,wn[i]);
+    }
+    fclose(fpB);
 
 	//保存用ファイルのオープン
-    fp = fopen("result.csv","w");
-    if(fp==NULL){
+    fpC = fopen("result.csv","w");
+    fseek(fpB,0L,SEEK_SET);
+    if(fpC==NULL){
         printf("ファイルオープンエラー\n");
         return -1;
     }
@@ -68,7 +67,7 @@ int main()
     //フィルタ係数用の配列を確保
     hn = (double *)calloc(filtSize,sizeof(double));
 
-    fprintf(fp,"番号,誤差10log10(e^2),白色信号");
+    fprintf(fpC,"番号,誤差10log10(e^2),白色信号");
     printf("番号,誤差10log10(e^2),白色信号");
 	//ここからグラフの横軸に相当する，サンプル回の繰り返し
     for(j=0;j<dataSize;j++){
@@ -109,10 +108,11 @@ int main()
         e = e * e;        
 
 		//評価に使うデータ(eなど)をファイルへ1つずつ保存
-        fprintf(fp,"%d,%lf,%lf",j,10*log10(e),xn[0]);
+        fprintf(fpC,"%d,%lf,%lf",j,10*log10(e),xn[0]);
         printf("%d,%lf,%lf",j,10*log10(e),xn[0]);
 	//サンプルループここまで
     }
+
 }
 
 ////////////////////////////////////////////////////////////////////
