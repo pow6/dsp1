@@ -51,7 +51,7 @@ int main()
     wn = (double *)malloc(filtSize*sizeof(double));
     fseek(fpB,0L,SEEK_SET);
     for(i=0;i<filtSize;i++){
-       fscanf(fpB,"%lf\n",&wn[i]);
+        fscanf(fpB,"%lf\n",&wn[i]);
         printf("filtSize : %d  ---- %lf\n",i,wn[i]);
     }
     fclose(fpB);
