@@ -332,4 +332,3 @@ void filtering(double *rawData,double *h,int rawDataSize,int hFilterSize,FILE *f
         fprintf(fpOUT,"%lf\n",result[i]);
     }
 }
-
