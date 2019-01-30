@@ -3,15 +3,14 @@
 #include <time.h>
 #include <math.h>
 
+//#define fileRead(fileName,fileStream) printf("aaa");fileStream=fopen(fileName,"r");if(fileStream==NULL){printf("cannat read file[%s]",fileName);exit(1);}
+//#define fileWrite(fileName,fileStream) fileStream=fopen(fileName,"w");if(fileStream==NULL){printf("cannat write file[%s]",fileName);exit(1);}
+
 double gauss(void);	//白色ガウス性雑音発生関数
 double colored(void);	//有色信号発生関数(1次IIRフィルタ利用)
 void intro(void);
 
-#define fileRead(fileName,fileStream) fileStream=fopen(fileName,"r");if(fileStream==NULL){printf("cannat read file[%s]",fileName);exit(1);}
-#define fileWrite(fileName,fileStream) fileStream=fopen(fileName,"w");if(fileStream==NULL){printf("cannat write file[%s]",fileName);exit(1);}
-
-
-//メイン　
+//メイン
 int main()
 {
     double *rawxn;      //生データ
@@ -24,43 +23,53 @@ int main()
 
     FILE *fp;
     int dataSize,filtSize;
-    double tmp;
-    char fileName[24];
+    double tmp,step;
+    printf("ファイル読み込み");
 
 	srand((unsigned)time(NULL));
 
-    intro();
+    //intro();
 	//入力データが入ったファイルをオープン
-    printf("入力データファイル名を入力してください(txt)：");
-    scanf("%s",fileName);
-    fileRead(fileName,fp);
+    fp = fopen("ara11_s.txt","r");
+    if(fp==NULL){
+        printf("ファイルオープンエラー\n");
+        return -1;
+    }
     dataSize=0;
-    while(fscanf(fp,"%lf",tmp) != EOF)dataSize++;
+    while(fscanf(fp,"%lf",&tmp) != EOF)dataSize++;
     rawxn = (double *)malloc(dataSize*sizeof(double));
-    rewind(fp);
-    while(fscanf(fp,"%lf",rawxn[i]) != EOF)i++;
+    fseek(fp,0L,SEEK_SET);
+    i=0;
+    while(fscanf(fp,"%lf",&rawxn[i]) != EOF)i++;
     fclose(fp);
 
 	//インパルス応答をファイルから読み込む．数もカウントnとする
-    printf("インパルス応答(未知システム)ファイル名を入力してください(txt)：");
-    scanf("%s",fileName);
-    fileRead(fileName,fp);
+    fp = fopen("w_imp50.txt","r");
+    if(fp==NULL){
+        printf("ファイルオープンエラー\n");
+        return -1;
+    }
+    fseek(fp,0L,SEEK_SET);
     filtSize=0;
-    while(fscanf(fp,"%lf",tmp) != EOF)filtSize++;
+    while(fscanf(fp,"%lf",&tmp) != EOF)filtSize++;
     wn = (double *)malloc(filtSize*sizeof(double));
-    rewind(fp);
-    while(fscanf(fp,"%lf",wn[i]) != EOF)i++;
+    fseek(fp,0L,SEEK_SET);
+    i=0;
+    while(fscanf(fp,"%lf",&wn[i]) != EOF)i++;
     fclose(fp);
 
 	//保存用ファイルのオープン
-    printf("保存先ファイル名を入力してください(csv)：");
-    scanf("%s",fileName);
-    fileWrite(fileName,fp); //開いたまま
-
+    fp = fopen("result.csv","w");
+    if(fp==NULL){
+        printf("ファイルオープンエラー\n");
+        return -1;
+    }
+    
     //フィルタ係数用の配列を確保
     hn = (double *)calloc(filtSize,sizeof(double));
 
     fprintf(fp,"番号,誤差10log10(e^2),白色信号");
+    printf("番号,誤差10log10(e^2),白色信号");
 	//ここからグラフの横軸に相当する，サンプル回の繰り返し
     for(j=0;j<dataSize;j++){
 		//xnの更新
@@ -91,6 +100,7 @@ int main()
         }
 
 		//フィルタ係数のhnの計算
+        step = 1/xnorm;
         for(i=0;i<filtSize;i++){
             hn[i]+=step*xn[i]*e/(xnorm+0.000001);//フィルタ係数の更新
         }
@@ -99,18 +109,36 @@ int main()
         e = e * e;        
 
 		//評価に使うデータ(eなど)をファイルへ1つずつ保存
-        fprintf(fp,"%d,%lf,%lf",j,10*log10(e),x[0]);
-
+        fprintf(fp,"%d,%lf,%lf",j,10*log10(e),xn[0]);
+        printf("%d,%lf,%lf",j,10*log10(e),xn[0]);
 	//サンプルループここまで
     }
 }
 
-double gauss(void){
-    
+////////////////////////////////////////////////////////////////////
+//白色ガウス性雑音作成関数
+double gauss(void)//正規乱数（ボックスミュラー法を利用）
+{
+    double x1,x2,gauss,sd=1.0;//sdは分散
+    double pi=3.14159265358979;
 
+    x1=(double)rand()/(RAND_MAX);//0-1の一様乱数１
+	while(x1 == 0.0){
+		x1=(double)rand()/(RAND_MAX);
+	}
+    x2=(double)rand()/(RAND_MAX);//0-1の一様乱数２
+    gauss=sqrt(-2.0*log(x1))*cos(2.0*pi*x2)*sqrt(sd);
+    return gauss;
 }
-double colored(void){
-
+////////////////////////////////////////////////////////////////////
+//１次IIRフィルタによる有色信号作成関数
+double colored(void)
+{
+	double color;
+	static double oldcolor=0.0;
+	color = gauss() + 0.95*oldcolor;
+	oldcolor = color;
+	return color;
 }
 
 void intro(void){
