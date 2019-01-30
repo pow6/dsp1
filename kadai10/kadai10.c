@@ -1,22 +1,24 @@
+//4J02’rŒû‹±i
+
 #include <stdio.h> 
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
-double gauss(void);	//ç™½è‰²ã‚¬ã‚¦ã‚¹æ€§é›‘éŸ³ç™ºç”Ÿé–¢æ•°
-double colored(void);	//æœ‰è‰²ä¿¡å·ç™ºç”Ÿé–¢æ•°(1æ¬¡IIRãƒ•ã‚£ãƒ«ã‚¿åˆ©ç”¨)
+double gauss(void);	//”’FƒKƒEƒX«G‰¹”­¶ŠÖ”
+double colored(void);	//—LFM†”­¶ŠÖ”(1ŸIIRƒtƒBƒ‹ƒ^—˜—p)
 void intro(void);
 
-//ãƒ¡ã‚¤ãƒ³
+//ƒƒCƒ“
 int main()
 {
-    double *rawxn;      //ç”Ÿãƒ‡ãƒ¼ã‚¿
-	double *xn;			//å…¥åŠ›ä¿¡å·ãƒ™ã‚¯ãƒˆãƒ«
-	double *hn;			//æ¨å®šã‚·ã‚¹ãƒ†ãƒ 
-	double *wn;			//æœªçŸ¥ã‚·ã‚¹ãƒ†ãƒ 
+    double *rawxn;      //¶ƒf[ƒ^
+	double *xn;			//“ü—ÍM†ƒxƒNƒgƒ‹
+	double *hn;			//„’èƒVƒXƒeƒ€
+	double *wn;			//–¢’mƒVƒXƒeƒ€
 
-	double d,y,e,xnorm;
-	int i,j,sample;
+	double d,y,e,xnorm,error;
+	int i,j;
 
     FILE *fpA,*fpB,*fpC;
     int dataSize,filtSize;
@@ -25,14 +27,14 @@ int main()
 	srand((unsigned)time(NULL));
 
     //intro();
-	//å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ãŒå…¥ã£ãŸãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚ªãƒ¼ãƒ—ãƒ³
+	//“ü—Íƒf[ƒ^‚ª“ü‚Á‚½ƒtƒ@ƒCƒ‹‚ğƒI[ƒvƒ“
+    dataSize = 12000;
     fpA = fopen("ara11_s.txt","r");
     if(fpA == NULL){
-        printf("ãƒ•ã‚¡ã‚¤ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³ã‚¨ãƒ©ãƒ¼\n");
+        printf("cannot open datafile\n");
         return -1;
     }
 
-    dataSize = 10000;
     rawxn = (double *)malloc(dataSize*sizeof(double));
     fseek(fpA,0L,SEEK_SET);
     for(i=0;i<dataSize;i++){
@@ -40,102 +42,98 @@ int main()
     }
     fclose(fpA);
 
-	//ã‚¤ãƒ³ãƒ‘ãƒ«ã‚¹å¿œç­”ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€ï¼æ•°ã‚‚ã‚«ã‚¦ãƒ³ãƒˆnã¨ã™ã‚‹
+	//ƒCƒ“ƒpƒ‹ƒX‰“š‚ğƒtƒ@ƒCƒ‹‚©‚ç“Ç‚İ‚ŞD”‚àƒJƒEƒ“ƒgn‚Æ‚·‚é
     fpB = fopen("w_imp50.txt","r");
     if(fpB==NULL){
-        printf("ãƒ•ã‚¡ã‚¤ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³ã‚¨ãƒ©ãƒ¼\n");
+        printf("cannot open impulsefile\n");
         return -1;
     }
 
     filtSize=50;
     wn = (double *)malloc(filtSize*sizeof(double));
-    xn = (double *)malloc(filtSize*sizeof(double));
+    xn = (double *)calloc(filtSize,sizeof(double));
     fseek(fpB,0L,SEEK_SET);
     for(i=0;i<filtSize;i++){
         fscanf(fpB,"%lf\n",&wn[i]);
     }
     fclose(fpB);
 
-	//ä¿å­˜ç”¨ãƒ•ã‚¡ã‚¤ãƒ«ã®ã‚ªãƒ¼ãƒ—ãƒ³
+	//•Û‘¶—pƒtƒ@ƒCƒ‹‚ÌƒI[ƒvƒ“
     fpC = fopen("result.csv","w");
     fseek(fpB,0L,SEEK_SET);
     if(fpC==NULL){
-        printf("ãƒ•ã‚¡ã‚¤ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³ã‚¨ãƒ©ãƒ¼\n");
+        printf("cannot open writefile\n");
         return -1;
     }
     
-    //ãƒ•ã‚£ãƒ«ã‚¿ä¿‚æ•°ç”¨ã®é…åˆ—ã‚’ç¢ºä¿
+    //ƒtƒBƒ‹ƒ^ŒW”—p‚Ì”z—ñ‚ğŠm•Û
     hn = (double *)calloc(filtSize,sizeof(double));
 
-    fprintf(fpC,"ç•ªå·,èª¤å·®,èª¤å·®10log10(e^2),ç™½è‰²ä¿¡å·\n");
-    printf("ç•ªå·,èª¤å·®,èª¤å·®10log10(e^2),ç™½è‰²ä¿¡å·\n");
-	//ã“ã“ã‹ã‚‰ã‚°ãƒ©ãƒ•ã®æ¨ªè»¸ã«ç›¸å½“ã™ã‚‹ï¼Œã‚µãƒ³ãƒ—ãƒ«å›ã®ç¹°ã‚Šè¿”ã—
+    fprintf(fpC,"”Ô†,Œ³M†,ŠÏ‘ªM†d(n),‹^—ƒGƒR[y(n),Œë·,Œë·10log10(e^2)\n");
+    printf("”Ô†,Œ³M†,ŠÏ‘ªM†d(n),‹^—ƒGƒR[y(n),Œë·,Œë·10log10(e^2)\n");
+	//‚±‚±‚©‚çƒOƒ‰ƒt‚Ì‰¡²‚É‘Š“–‚·‚éCƒTƒ“ƒvƒ‹‰ñ‚ÌŒJ‚è•Ô‚µ
+    step = 1.0;
 
     for(j=0;j<dataSize;j++){
-		//xnã®æ›´æ–°
-        for(i=0;i<filtSize;i++){
-           xn[i]=rawxn[j+i];
-        }
-		//ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã‚€ã‚‚ã®ã«ã¤ã„ã¦ã¯ï¼Œ1ã‚µãƒ³ãƒ—ãƒ«ã”ã¨ã«èª­ã¿è¾¼ã¿
-        //for(i=filtSize-1;i>0;i--) xn[i]=xn[i-1];//å…¥åŠ›ãƒ™ã‚¯ãƒˆãƒ«ã‚’ç”Ÿæˆ
-		//xn[0]=gauss();
-		
-		//æ‰€æœ›ä¿¡å·dã®è¨ˆç®—ï¼ˆfirãƒ•ã‚£ãƒ«ã‚¿ã«ã‚ˆã‚‹ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°ï¼‰ d = xnã¨wnã®å†…ç©
+		//xn‚ÌXV
+    	for(i=filtSize-1;i>0;i--)xn[i]=xn[i-1];//“ü—ÍƒxƒNƒgƒ‹‚ğ¶¬
+		//xn[0] = rawxn[j];
+        xn[0]=gauss();
+		//xn[0]=colored();
+	
+    	//Š–]M†d‚ÌŒvZifirƒtƒBƒ‹ƒ^‚É‚æ‚éƒtƒBƒ‹ƒ^ƒŠƒ“ƒOj d = xn‚Æwn‚Ì“àÏ
         d = 0;
         for(i=0;i<filtSize;i++){
             d += xn[i] * wn[i];
+            //if(j==100)printf("%d %lf %lf %lf\n",i,xn[i],wn[i],d);
         }
 
-		//ãƒ•ã‚£ãƒ«ã‚¿ã‹ã‚‰ã®å‡ºåŠ›ä¿¡å·yã®è¨ˆç®—ï¼ˆæ–¹æ³•ã¯dã¨åŒæ§˜ï¼‰
+		//ƒtƒBƒ‹ƒ^‚©‚ç‚Ìo—ÍM†y‚ÌŒvZi•û–@‚Íd‚Æ“¯—lj
         y = 0;
         for(i=0;i<filtSize;i++){
             y += xn[i] * hn[i];
+            //if(j==5)printf("%d %lf %lf %lf\n",i,xn[i],hn[i],y);
         }
 
 
-		//èª¤å·®ä¿¡å·eã®è¨ˆç®—
-        e = d - y;
-
-		//å…¥åŠ›ä¿¡å·ãƒ™ã‚¯ãƒˆãƒ«xnã®ãƒãƒ«ãƒ ã®äºŒä¹—||xn||^2ã®è¨ˆç®—(xnåŒå£«ã®å†…ç©)
+		//Œë·M†e‚ÌŒvZ
+        if(d-y==0);
+        else e = d - y;
+        //“ü—ÍM†ƒxƒNƒgƒ‹xn‚Ìƒmƒ‹ƒ€‚Ì“ñæ||xn||^2‚ÌŒvZ(xn“¯m‚Ì“àÏ)
         xnorm = 0;
         for(i=0;i<filtSize;i++){
             xnorm += xn[i] * xn[i];
         }
 
-		//ãƒ•ã‚£ãƒ«ã‚¿ä¿‚æ•°ã®hnã®è¨ˆç®—
-        step = 1/xnorm;
+		//ƒtƒBƒ‹ƒ^ŒW”‚Ìhn‚ÌŒvZ
         for(i=0;i<filtSize;i++){
-            hn[i]+=step*xn[i]*e/(xnorm+0.000001);//ãƒ•ã‚£ãƒ«ã‚¿ä¿‚æ•°ã®æ›´æ–°
+            hn[i]= hn[i] + step*xn[i]*e/(xnorm+0.000001);//ƒtƒBƒ‹ƒ^ŒW”‚ÌXV
         }
 
-		//ã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ ã®è©•ä¾¡ã«ä½¿ã†eã®2ä¹—ã‚’è¨ˆç®—
-        e = e * e;        
+		//ƒAƒ‹ƒSƒŠƒYƒ€‚Ì•]‰¿‚Ég‚¤e‚Ì2æ‚ğŒvZ
+        error = e * e;        
 
-		//è©•ä¾¡ã«ä½¿ã†ãƒ‡ãƒ¼ã‚¿(eãªã©)ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã¸1ã¤ãšã¤ä¿å­˜
-        fprintf(fpC,"%d,%lf,%lf,%lf\n",j,e,10*log10(e),xn[0]);
-            printf("%d,%lf,%lf,%lf\n",j,e,10*log10(e),xn[0]);
-	//ã‚µãƒ³ãƒ—ãƒ«ãƒ«ãƒ¼ãƒ—ã“ã“ã¾ã§
+		//•]‰¿‚Ég‚¤ƒf[ƒ^(e‚È‚Ç)‚ğƒtƒ@ƒCƒ‹‚Ö1‚Â‚¸‚Â•Û‘¶
+        fprintf(fpC,"%d,%lf,%lf,%lf,%lf,%lf\n",j,xn[0],d,y,e,10*log10(error));
+        printf("%d,%lf,%lf,%lf,%lf,%lf\n",j,xn[0],d,y,e,10*log10(error));
     }
 
 }
 
-////////////////////////////////////////////////////////////////////
-//ç™½è‰²ã‚¬ã‚¦ã‚¹æ€§é›‘éŸ³ä½œæˆé–¢æ•°
-double gauss(void)//æ­£è¦ä¹±æ•°ï¼ˆãƒœãƒƒã‚¯ã‚¹ãƒŸãƒ¥ãƒ©ãƒ¼æ³•ã‚’åˆ©ç”¨ï¼‰
+double gauss(void)//³‹K—”
 {
-    double x1,x2,gauss,sd=1.0;//sdã¯åˆ†æ•£
+    double x1,x2,gauss,sd=1.0;//sd‚Í•ªU
     double pi=3.14159265358979;
 
-    x1=(double)rand()/(RAND_MAX);//0-1ã®ä¸€æ§˜ä¹±æ•°ï¼‘
+    x1=(double)rand()/(RAND_MAX);//0-1‚Ìˆê—l—”‚P
 	while(x1 == 0.0){
 		x1=(double)rand()/(RAND_MAX);
 	}
-    x2=(double)rand()/(RAND_MAX);//0-1ã®ä¸€æ§˜ä¹±æ•°ï¼’
+    x2=(double)rand()/(RAND_MAX);//0-1‚Ìˆê—l—”‚Q
     gauss=sqrt(-2.0*log(x1))*cos(2.0*pi*x2)*sqrt(sd);
     return gauss;
 }
-////////////////////////////////////////////////////////////////////
-//ï¼‘æ¬¡IIRãƒ•ã‚£ãƒ«ã‚¿ã«ã‚ˆã‚‹æœ‰è‰²ä¿¡å·ä½œæˆé–¢æ•°
+
 double colored(void)
 {
 	double color;
@@ -146,5 +144,5 @@ double colored(void)
 }
 
 void intro(void){
-    printf("4J02 æ± å£æ­å¸ èª²é¡Œ10\n");
+    printf("4J02 ’rŒû‹±i ‰Û‘è10\n");
 }
