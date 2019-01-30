@@ -49,10 +49,10 @@ int main()
 
     filtSize=50;
     wn = (double *)malloc(filtSize*sizeof(double));
+    xn = (double *)malloc(filtSize*sizeof(double));
     fseek(fpB,0L,SEEK_SET);
     for(i=0;i<filtSize;i++){
         fscanf(fpB,"%lf\n",&wn[i]);
-        printf("filtSize : %d  ---- %lf\n",i,wn[i]);
     }
     fclose(fpB);
 
@@ -67,14 +67,18 @@ int main()
     //フィルタ係数用の配列を確保
     hn = (double *)calloc(filtSize,sizeof(double));
 
-    fprintf(fpC,"番号,誤差10log10(e^2),白色信号");
-    printf("番号,誤差10log10(e^2),白色信号");
+    fprintf(fpC,"番号,誤差,誤差10log10(e^2),白色信号\n");
+    printf("番号,誤差,誤差10log10(e^2),白色信号\n");
 	//ここからグラフの横軸に相当する，サンプル回の繰り返し
+
     for(j=0;j<dataSize;j++){
 		//xnの更新
+        for(i=0;i<filtSize;i++){
+           xn[i]=rawxn[j+i];
+        }
 		//ファイルから読むものについては，1サンプルごとに読み込み
-        for(i=filtSize-1;i>0;i--) xn[i]=xn[i-1];//入力ベクトルを生成
-		xn[0]=gauss();
+        //for(i=filtSize-1;i>0;i--) xn[i]=xn[i-1];//入力ベクトルを生成
+		//xn[0]=gauss();
 		
 		//所望信号dの計算（firフィルタによるフィルタリング） d = xnとwnの内積
         d = 0;
@@ -95,7 +99,7 @@ int main()
 		//入力信号ベクトルxnのノルムの二乗||xn||^2の計算(xn同士の内積)
         xnorm = 0;
         for(i=0;i<filtSize;i++){
-            y += xn[i] * xn[i];
+            xnorm += xn[i] * xn[i];
         }
 
 		//フィルタ係数のhnの計算
@@ -108,8 +112,8 @@ int main()
         e = e * e;        
 
 		//評価に使うデータ(eなど)をファイルへ1つずつ保存
-        fprintf(fpC,"%d,%lf,%lf",j,10*log10(e),xn[0]);
-        printf("%d,%lf,%lf",j,10*log10(e),xn[0]);
+        fprintf(fpC,"%d,%lf,%lf,%lf\n",j,e,10*log10(e),xn[0]);
+            printf("%d,%lf,%lf,%lf\n",j,e,10*log10(e),xn[0]);
 	//サンプルループここまで
     }
 
@@ -142,5 +146,5 @@ double colored(void)
 }
 
 void intro(void){
-
+    printf("4J02 池口恭司 課題10\n");
 }
