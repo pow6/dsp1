@@ -1,33 +1,37 @@
-//4J02�r�����i
+//4J02池口恭司
 
 #include <stdio.h> 
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
-double gauss(void);	//���F�K�E�X���G�������֐�
-double colored(void);	//�L�F�M�������֐�(1��IIR�t�B���^���p)
+double gauss(void);	//白色ガウス性雑音発生関数
+double colored(void);	//有色信号発生関数(1次IIRフィルタ利用)
 void intro(void);
 
-//���C��
+//メイン
 int main()
 {
-    double *rawxn;      //���f�[�^
-	double *xn;			//���͐M���x�N�g��
-	double *hn;			//����V�X�e��
-	double *wn;			//���m�V�X�e��
+    double *rawxn;      //生データ
+	double *xn;			//入力信号ベクトル
+	double *hn;			//推定システム
+	double *wn;			//未知システム
 
 	double d,y,e,xnorm,error;
 	int i,j;
 
     FILE *fpA,*fpB,*fpC;
-    int dataSize,filtSize;
+    int mode,dataSize,filtSize;
     double tmp,step;
-
+    
 	srand((unsigned)time(NULL));
 
-    //intro();
-	//���̓f�[�^���������t�@�C�����I�[�v��
+    intro();
+    do{
+        printf("モード選択 => 1：白色信号　２：有色信号　３：音声信号");
+        scanf("%d",&mode);
+    }while(mode<1||mode>3);
+    //入力データが入ったファイルをオープン
     dataSize = 12000;
     fpA = fopen("ara11_s.txt","r");
     if(fpA == NULL){
@@ -42,14 +46,14 @@ int main()
     }
     fclose(fpA);
 
-	//�C���p���X�������t�@�C������ǂݍ��ށD�����J�E���gn�Ƃ���
+	//インパルス応答をファイルから読み込む．数もカウントnとする
     fpB = fopen("w_imp50.txt","r");
     if(fpB==NULL){
         printf("cannot open impulsefile\n");
         return -1;
     }
 
-    filtSize=50;
+    filtSize=10;
     wn = (double *)malloc(filtSize*sizeof(double));
     xn = (double *)calloc(filtSize,sizeof(double));
     fseek(fpB,0L,SEEK_SET);
@@ -58,7 +62,7 @@ int main()
     }
     fclose(fpB);
 
-	//�ۑ��p�t�@�C���̃I�[�v��
+	//保存用ファイルのオープン
     fpC = fopen("result.csv","w");
     fseek(fpB,0L,SEEK_SET);
     if(fpC==NULL){
@@ -66,70 +70,76 @@ int main()
         return -1;
     }
     
-    //�t�B���^�W���p�̔z����m��
+    //フィルタ係数用の配列を確保
     hn = (double *)calloc(filtSize,sizeof(double));
 
-    fprintf(fpC,"�ԍ�,���M��,�ϑ��M��d(n),�^���G�R�[y(n),�덷,�덷10log10(e^2)\n");
-    printf("�ԍ�,���M��,�ϑ��M��d(n),�^���G�R�[y(n),�덷,�덷10log10(e^2)\n");
-	//��������O���t�̉����ɑ�������C�T���v����̌J��Ԃ�
+    fprintf(fpC,"番号,元信号,観測信号d(n),疑似エコーy(n),誤差,誤差10log10(e^2)\n");
+    //printf("番号,元信号,観測信号d(n),疑似エコーy(n),誤差,誤差10log10(e^2)\n");
+	//ここからグラフの横軸に相当する，サンプル回の繰り返し
     step = 1.0;
 
     for(j=0;j<dataSize;j++){
-		//xn�̍X�V
-    	for(i=filtSize-1;i>0;i--)xn[i]=xn[i-1];//���̓x�N�g���𐶐�
-		//xn[0] = rawxn[j];
-        xn[0]=gauss();
-		//xn[0]=colored();
-	
-    	//���]�M��d�̌v�Z�ifir�t�B���^�ɂ��t�B���^�����O�j d = xn��wn�̓���
+		//xnの更新
+    	for(i=filtSize-1;i>0;i--)xn[i]=xn[i-1];//入力ベクトルを生成
+		switch(mode){
+            case 1:
+                xn[0] = rawxn[j];
+                break;
+            case 2:
+                xn[0]=gauss();
+                break;
+            case 3:
+                xn[0]=colored();
+                break;
+        }
+    	//所望信号dの計算（firフィルタによるフィルタリング） d = xnとwnの内積
         d = 0;
         for(i=0;i<filtSize;i++){
             d += xn[i] * wn[i];
-            //if(j==100)printf("%d %lf %lf %lf\n",i,xn[i],wn[i],d);
         }
 
-		//�t�B���^����̏o�͐M��y�̌v�Z�i���@��d�Ɠ��l�j
+		//フィルタからの出力信号yの計算（方法はdと同様）
         y = 0;
         for(i=0;i<filtSize;i++){
             y += xn[i] * hn[i];
-            //if(j==5)printf("%d %lf %lf %lf\n",i,xn[i],hn[i],y);
         }
 
 
-		//�덷�M��e�̌v�Z
+		//誤差信号eの計算
         if(d-y==0);
         else e = d - y;
-        //���͐M���x�N�g��xn�̃m�����̓��||xn||^2�̌v�Z(xn���m�̓���)
+        //入力信号ベクトルxnのノルムの二乗||xn||^2の計算(xn同士の内積)
         xnorm = 0;
         for(i=0;i<filtSize;i++){
             xnorm += xn[i] * xn[i];
         }
 
-		//�t�B���^�W����hn�̌v�Z
+		//フィルタ係数のhnの計算
         for(i=0;i<filtSize;i++){
-            hn[i]= hn[i] + step*xn[i]*e/(xnorm+0.000001);//�t�B���^�W���̍X�V
+            hn[i]= hn[i] + step*xn[i]*e/(xnorm+0.000001);//フィルタ係数の更新
         }
 
-		//�A���S���Y���̕]���Ɏg��e��2����v�Z
+		//アルゴリズムの評価に使うeの2乗を計算
         error = e * e;        
 
-		//�]���Ɏg���f�[�^(e�Ȃ�)���t�@�C����1���ۑ�
+		//評価に使うデータ(eなど)をファイルへ1つずつ保存
         fprintf(fpC,"%d,%lf,%lf,%lf,%lf,%lf\n",j,xn[0],d,y,e,10*log10(error));
-        printf("%d,%lf,%lf,%lf,%lf,%lf\n",j,xn[0],d,y,e,10*log10(error));
+    //    printf("%d,%lf,%lf,%lf,%lf,%lf\n",j,xn[0],d,y,e,10*log10(error));
     }
+    printf("【完了】結果をresult.csvに書き込みました");
 
 }
 
-double gauss(void)//���K����
+double gauss(void)//正規乱数
 {
-    double x1,x2,gauss,sd=1.0;//sd�͕��U
+    double x1,x2,gauss,sd=1.0;//sdは分散
     double pi=3.14159265358979;
 
-    x1=(double)rand()/(RAND_MAX);//0-1�̈�l�����P
+    x1=(double)rand()/(RAND_MAX);//0-1の一様乱数１
 	while(x1 == 0.0){
 		x1=(double)rand()/(RAND_MAX);
 	}
-    x2=(double)rand()/(RAND_MAX);//0-1�̈�l�����Q
+    x2=(double)rand()/(RAND_MAX);//0-1の一様乱数２
     gauss=sqrt(-2.0*log(x1))*cos(2.0*pi*x2)*sqrt(sd);
     return gauss;
 }
@@ -144,5 +154,14 @@ double colored(void)
 }
 
 void intro(void){
-    printf("4J02 �r�����i �ۑ�10\n");
+    printf("4J02 池口恭司 課題10\n");
+    printf("データ設定\n");
+    printf("簡易的なエコーキャンセラを実行する\n");
+    printf("入力信号：白色信号，有色信号，音声信号のうち一つ\n");
+    printf("　=>白色信号，有色信号は本プログラム中にて作成\n");
+    printf("　=>音声信号はara11_s.txtより読み取り\n");
+    printf("未知システムWn => w_imp50.txtより読み取り\n");
+    printf("使い方\n");
+    printf("モード選択が要求されるので，画面に従ってモードを選択する\n");
+    printf("結果のファイルが，『result.csv』として出力される\n");
 }
